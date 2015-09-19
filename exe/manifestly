@@ -1,0 +1,14 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+
+$LOAD_PATH.unshift File.dirname(__FILE__) + '/../lib'
+
+begin
+  require 'manifestly'
+rescue LoadError => e
+  warn "Could not load 'manifestly'; #{e.message}"
+  exit -1
+end
+
+Manifestly::CLI.start
