@@ -13,20 +13,81 @@ module Manifestly
     include CommandLineReporter
     include Manifestly::Ui
 
-    def self.common_method_options
+    def self.search_paths_option
       method_option :search_paths,
+                    :desc => "A list of paths where git repositories can be found",
                     :type => :array,
                     :required => false,
                     :default => '.'
     end
 
-    desc "create", "Create a new repository"
-    common_method_options
+    desc "create", "Create a new manifest"
+    search_paths_option
+    method_option :based_on,
+                  :desc => "A manifest file to use as a starting point",
+                  :type => :string,
+                  :required => false
     def create
-      # TODO allow starting from an existing manifest, either by filename or SHA
+      manifest = if options[:based_on]
+        Manifest.read(options[:based_on], available_repositories)
+      else
+        Manifest.new
+      end
 
-      manifest = Manifest.new
       present_manifest_menu(manifest)
+    end
+
+    desc "apply", "Sets the manifest's repository's current states to the commits listed in the manifest"
+    search_paths_option
+    def apply
+      say("Not yet implemented.")
+    end
+
+    desc "push", "Pushes a local manifest file to a manifest repository"
+    method_option :local,
+                  :desc => 'The local manifest file to push',
+                  :type => :string,
+                  :required => true
+    method_option :mfrepo,
+                  :desc => "The repository to push to (full URL or 'organization/reponame')",
+                  :type => :string,
+                  :required => true
+    method_option :remote,
+                  :desc => "The name of the remote file",
+                  :type => :string,
+                  :required => true
+    def push
+      say("Not yet implemented.")
+    end
+
+    desc "pull", "Downloads a manifest file from a manifest repository"
+    method_option :sha,
+                  :desc => "The commit SHA of the manifest on the remote repository",
+                  :type => :string,
+                  :required => true
+    method_option :mfrepo,
+                  :desc => "The manifest repository to pull from (full URL or 'organization/reponame')",
+                  :type => :string,
+                  :required => true
+    method_option :remote,
+                  :desc => "The name to use for the downloaded file (defaults to '<SHA>.manifest')",
+                  :type => :string,
+                  :required => false
+    def pull
+      say("Not yet implemented.")
+    end
+
+    desc "list", "Lists manifests from a manifest repository"
+    method_option :mfrepo,
+                  :desc => "The manifest repository to read from (full URL or 'organization/reponame')",
+                  :type => :string,
+                  :required => true
+    method_option :remote,
+                  :desc => "The name of the manifest to read from",
+                  :type => :string,
+                  :required => true
+    def list
+      say("Not yet implemented.")
     end
 
     protected
@@ -35,7 +96,7 @@ module Manifestly
       while true
         print_manifest(manifest)
 
-        action, options = ask_and_split(
+        action, args = ask_and_split(
           '(a)dd or (r)emove repository; (c)hoose commit; (w)rite manifest; (q)uit:'
         ) || next
 
@@ -43,10 +104,10 @@ module Manifestly
         when 'a'
           add_repositories(manifest)
         when 'r'
-          indices = convert_options_to_indices(options) || next
+          indices = convert_args_to_indices(args) || next
           manifest.remove_repositories_by_index(indices)
         when 'c'
-          indices = convert_options_to_indices(options, true) || next
+          indices = convert_args_to_indices(args, true) || next
           present_commit_menu(manifest[indices.first])
         when 'w'
           default_filename = Time.now.strftime("%Y%m%d-%H%M%S") + "-#{::SecureRandom.hex(2)}.manifest"
@@ -65,7 +126,7 @@ module Manifestly
       while true
         print_commit_shas(manifest_item)
 
-        action, options = ask_and_split(
+        action, args = ask_and_split(
           '(n)ext or (p)revious page; (c)hoose index; (m)anual SHA entry; (t)oggle PRs only; (r)eturn:'
         ) || next
 
@@ -75,15 +136,15 @@ module Manifestly
         when 'p'
           manifest_item.repository.prev_page_of_commits
         when 'c'
-          indices = convert_options_to_indices(options, true) || next
+          indices = convert_args_to_indices(args, true) || next
           manifest_item.set_commit_by_index(indices.first)
           break
         when 'm'
-          sha = options.first
+          sha = args.first
           begin
             manifest_item.set_commit_by_sha(sha)
             break
-          rescue Git::GitExecuteError
+          rescue CommitNotPresent
             say('That SHA is invalid')
             next
           end
@@ -106,18 +167,18 @@ module Manifestly
       [answer.shift, answer]
     end
 
-    def convert_options_to_indices(options, select_one=false)
-      if options.empty?
+    def convert_args_to_indices(args, select_one=false)
+      if args.empty?
         say('You must specify index(es) of manifest items after the action, e.g. "r 2 7".')
         false
-      elsif select_one && options.size > 1
+      elsif select_one && args.size > 1
         say('You can only specify one manifest index for this action.')
         false
-      elsif options.any? {|si| !si.is_i?}
+      elsif args.any? {|si| !si.is_i?}
         say('All specified indices must be integers.')
         false
       else
-        options.collect{|index| index.to_i}
+        args.collect{|index| index.to_i}
       end
     end
 
@@ -196,11 +257,11 @@ module Manifestly
     end
 
     def repository_choices
-      repositories.collect{|repo| {display: repo.github_name, value: repo}}
+      available_repositories.collect{|repo| {display: repo.github_name, value: repo}}
     end
 
-    def repositories
-      @repositories ||= (repository_search_paths.flat_map do |path|
+    def available_repositories
+      @available_repositories ||= (repository_search_paths.flat_map do |path|
         directories_under(path).collect{|dir| Manifestly::Repository.load(dir)}
       end).compact
     end

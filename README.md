@@ -42,20 +42,8 @@ To install this gem onto your local machine, run `bundle exec rake install`. To 
 
 -----
 
+Run locally with
 
-manifesto list
-  lists manifests, paginated
-manifesto create
-  makes a new manifest, committing it to tutor-manifests
-manifesto use <sha>       # "apply" instead?
-  uses the specified manifest, setting the repository states to the specified commits
-manifesto current
-  returns the manifest currently in use (searches backwards thru history)
-
-manifesto push <file> <repository> <name>
-
-manifesto pull <sha> <repository> <name>
-
-
-
+```
 exe/manifestly create --search_paths=..
+```

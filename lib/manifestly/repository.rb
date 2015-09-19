@@ -1,5 +1,7 @@
 class Manifestly::Repository
 
+  class CommitNotPresent < StandardError; end
+
   # Returns an object if can load a git repository at the specified path,
   # otherwise nil
   def self.load(path)
@@ -39,9 +41,13 @@ class Manifestly::Repository
     @commit_page = 0
   end
 
-  # returns the commit matching the provided sha or raises Git::GitExecuteError
+  # returns the commit matching the provided sha or raises
   def find_commit(sha)
-    git.gcommit(sha).tap(&:sha)
+    begin
+      git.gcommit(sha).tap(&:sha)
+    rescue Git::GitExecuteError => e
+      raise CommitNotPresent, "SHA not found: #{sha}"
+    end
   end
 
   def toggle_prs_only
