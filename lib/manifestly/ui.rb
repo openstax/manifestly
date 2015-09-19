@@ -32,7 +32,7 @@ module Manifestly
             table :border => false do
               row :header => true do
                 column "", width: 4
-                column "Choice", width: 40
+                column options[:choice_name].capitalize, width: 40
                 column "Shortcut", width:10 unless options[:hide_shortcuts]
               end
               choices.each_with_index do |choice, index|

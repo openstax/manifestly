@@ -64,6 +64,10 @@ class Manifestly::Repository
     origin.url[/github.com.(.*).git/,1]
   end
 
+  def working_dir
+    git.dir
+  end
+
   protected
 
   def initialize(path)

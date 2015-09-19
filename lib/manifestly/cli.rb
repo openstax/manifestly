@@ -1,7 +1,6 @@
 require "thor"
 require 'rainbow'
 require 'command_line_reporter'
-require 'byebug'
 require 'git'
 require 'securerandom'
 
@@ -184,10 +183,12 @@ module Manifestly
     end
 
     def add_repositories(manifest)
+      puts "\n"
       selected_repositories = select(
         repository_choices,
         hide_shortcuts: true,
-        question: "Choose which repositories you want in the manifest (e.g. '0 2 5'):"
+        choice_name: "repository",
+        question: "\nChoose which repositories you want in the manifest (e.g. '0 2 5'):"
       )
 
       selected_repositories.each do |repository|
@@ -258,7 +259,7 @@ module Manifestly
     end
 
     def repository_choices
-      available_repositories.collect{|repo| {display: repo.github_name, value: repo}}
+      available_repositories.collect{|repo| {display: repo.github_name || repo.working_dir, value: repo}}
     end
 
     def available_repositories

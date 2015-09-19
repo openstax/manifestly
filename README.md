@@ -6,7 +6,7 @@ Manifestly helps you manage complicated deployments involving multiple sites and
 
 Manifestly is run as a standalone executable.  Install with:
 
-`gem install manifestly`
+    $ gem install manifestly
 
 And then execute:
 
@@ -18,9 +18,39 @@ Or install it yourself as:
 
 ## Usage
 
-manifestly create --search_paths=..
+Manifestly has built in help:
 
-TODO: Write usage instructions here
+    $ manifestly help
+
+### create
+
+To create a new manifest, run
+
+    $ manifestly create
+
+Both `create` and `apply` take a `--search-paths` option to specify where the repositories of interest can be found.  The default search path is the current directory.
+
+`create` will then show you a blank manifest and give you options to add or remove repositories, or to choose the manifest commit for an existing repository.  When repositories are added, their latest commit is listed.  All commits seen during manifest creation are local commits only -- this tool does not look up remote commits.
+
+### push
+
+To push a manifest file you have created, call:
+
+    $ manifestly push --local=my_file.manifest --mfrepo=myorg/myrepo --remote=foo
+
+This will take your local file and push it as the latest commit on top of the `foo` file at github.com/myorg/myrepo.
+
+### pull
+
+To pull a manifest file... instructions TBD, see built-in help.
+
+### apply
+
+To apply a manifest file to your local repositories... instructions TBD, see built-in help.
+
+### list
+
+To list available manifest files... instructions TBD, see built-in help
 
 ## Development
 
@@ -31,6 +61,8 @@ To run manifestly like an end user eventually will, run:
 ```
 exe/manifestly <OPTIONS AND ARGS HERE>
 ```
+
+Remember to pass the `--search-paths` option to tell manifestly where to find your repositories relative to where you are running the gem from.
 
 To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release` to create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
 
