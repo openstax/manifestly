@@ -9,6 +9,7 @@ require 'securerandom'
 
 module Manifestly
   class CLI < Thor
+    package_name "manifestly"
 
     include CommandLineReporter
     include Manifestly::Ui
