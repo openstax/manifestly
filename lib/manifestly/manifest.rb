@@ -41,7 +41,7 @@ module Manifestly
     def write(filename)
       File.open(filename, 'w') do |file|
         @items.each do |item|
-          file.write(item.to_file_string)
+          file.write(item.to_file_string + "\n")
         end
       end
     end
