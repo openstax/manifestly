@@ -50,6 +50,14 @@ class Manifestly::Repository
     end
   end
 
+  def checkout_commit(sha)
+    git.checkout(sha)
+  end
+
+  def current_branch_name
+    git.lib.branch_current
+  end
+
   def toggle_prs_only
     @commit_page = 0
     @prs_only = !@prs_only

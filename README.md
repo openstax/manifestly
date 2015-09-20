@@ -48,6 +48,8 @@ To pull a manifest file... instructions TBD, see built-in help.
 
 To apply a manifest file to your local repositories... instructions TBD, see built-in help.
 
+    $ manifestly apply --file=20150919-210854-2d47.manifest
+
 ### list
 
 To list available manifest files... instructions TBD, see built-in help

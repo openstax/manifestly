@@ -39,8 +39,13 @@ module Manifestly
 
     desc "apply", "Sets the manifest's repository's current states to the commits listed in the manifest"
     search_paths_option
+    method_option :file,
+                  :desc => "The manifest file to apply",
+                  :type => :string,
+                  :required => true
     def apply
-      say("Not yet implemented.")
+      manifest = Manifest.read(options[:file], available_repositories)
+      manifest.items.each(&:checkout_commit!)
     end
 
     desc "push", "Pushes a local manifest file to a manifest repository"
@@ -69,7 +74,7 @@ module Manifestly
                   :desc => "The manifest repository to pull from (full URL or 'organization/reponame')",
                   :type => :string,
                   :required => true
-    method_option :remote,
+    method_option :save_as,
                   :desc => "The name to use for the downloaded file (defaults to '<SHA>.manifest')",
                   :type => :string,
                   :required => false
@@ -203,7 +208,8 @@ module Manifestly
       table :border => false do
         row :header => true do
           column "#", width: 4
-          column "Repository", width: 40
+          column "Repository", width: 36
+          column "Branch", width: 30
           column "SHA", width: 10
         end
 
@@ -217,6 +223,7 @@ module Manifestly
             row do
               column "(#{index})", align: 'right', width: 4
               column "#{item.repository_name}", width: 40
+              column "#{item.repository.current_branch_name}"
               column "#{item.commit.sha[0..9]}", width: 10
             end
           end
@@ -234,7 +241,6 @@ module Manifestly
           column "#", width: 4
           column "SHA", width: 10
           column "Message", width: 54
-          # column "Author", width: 14
           column "Date", width: 25
         end
 
@@ -243,7 +249,6 @@ module Manifestly
             column "#{index}", align: 'right'
             column "#{commit.sha[0..9]}"
             column "#{summarize_commit_message(commit)}"
-            # column "#{commit.author.name[0..13]}"
             column "#{commit.date}"
           end
         end
@@ -268,15 +273,9 @@ module Manifestly
       end).compact
     end
 
-    def new_manifest_filename
-      "test_#{::SecureRandom.hex(3)}.manifest"
-    end
-
     def directories_under(path)
       entries = Dir.entries(path)
       entries.reject!{ |dir| dir =='.' || dir == '..' }
-
-      # entries.reject!{ |dir| dir != 'tutor-server' }
 
       full_entry_paths = entries.collect{|entry| File.join(path, entry)}
       full_entry_paths.reject{ |path| !File.directory?(path) }

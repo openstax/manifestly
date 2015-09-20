@@ -21,6 +21,10 @@ module Manifestly
       @commit = @repository.find_commit(sha)
     end
 
+    def checkout_commit!
+      @repository.checkout_commit(@commit.sha)
+    end
+
     def to_file_string
       "#{repository_name} @ #{commit.sha}"
     end
