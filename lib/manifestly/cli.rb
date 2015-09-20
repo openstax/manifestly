@@ -57,12 +57,21 @@ module Manifestly
                   :desc => "The repository to push to (full URL or 'organization/reponame')",
                   :type => :string,
                   :required => true
-    method_option :remote,
+    method_option :remote,  # mfrepo_file?
                   :desc => "The name of the remote file",
                   :type => :string,
                   :required => true
+    method_option :message,
+                  :desc => "A commit message describing this manifest",
+                  :type => :string,
+                  :required => false
     def push
       say("Not yet implemented.")
+      return
+      # manifest = Manifest.read(options[:file], available_repositories)
+      manifest_repository = ManifestRepository.get(options[:mfrepo])
+      # update the mfrepo (fetch) if not done by ManifestRepository
+      # write the manifest file to the targeted file
     end
 
     desc "pull", "Downloads a manifest file from a manifest repository"
