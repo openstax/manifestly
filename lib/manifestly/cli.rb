@@ -64,14 +64,15 @@ module Manifestly
     method_option :message,
                   :desc => "A commit message describing this manifest",
                   :type => :string,
-                  :required => false
+                  :required => true
     def push
-      say("Not yet implemented.")
-      return
-      # manifest = Manifest.read(options[:file], available_repositories)
-      manifest_repository = ManifestRepository.get(options[:mfrepo])
-      # update the mfrepo (fetch) if not done by ManifestRepository
-      # write the manifest file to the targeted file
+      repository = Repository.load_cached(options[:mfrepo], :update => true)
+
+      begin
+        repository.push_file!(options[:local], options[:remote], options[:message])
+      rescue Manifestly::Repository::ManifestUnchanged => e
+        say "The manifest you requested to push is already the latest and so could not be pushed."
+      end
     end
 
     desc "pull", "Downloads a manifest file from a manifest repository"
@@ -88,7 +89,17 @@ module Manifestly
                   :type => :string,
                   :required => false
     def pull
-      say("Not yet implemented.")
+      repository = Repository.load_cached(options[:mfrepo], :update => true)
+
+      commit_lines = begin
+        repository.get_commit_lines(options[:sha])
+      rescue CommitNotPresent
+        say('That SHA is invalid')
+        return
+      end
+
+      save_as = options[:save_as] || "#{options[:sha][0..9]}.manifest"
+      File.open(save_as, 'w') { |file| file.write(commit_lines.join("\n")) }
     end
 
     desc "list", "Lists manifests from a manifest repository"
@@ -101,7 +112,7 @@ module Manifestly
                   :type => :string,
                   :required => true
     def list
-      say("Not yet implemented.")
+      repository = Repository.load_cached(options[:mfrepo], :update => true)
     end
 
     protected

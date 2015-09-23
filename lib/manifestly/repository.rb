@@ -1,12 +1,35 @@
+require 'fileutils'
+
 class Manifestly::Repository
 
   class CommitNotPresent < StandardError; end
+  class ManifestUnchanged < StandardError; end
 
   # Returns an object if can load a git repository at the specified path,
   # otherwise nil
   def self.load(path)
     repository = new(path)
     repository.is_git_repository? ? repository : nil
+  end
+
+  # Loads a gem-cached copy of the specified repository, cloning it if
+  # necessary.
+  def self.load_cached(github_name, options)
+    options[:update] ||= false
+
+    path = "./.manifestly/.manifest_repositories/#{github_name}"
+    FileUtils.mkdir_p(path)
+
+    repository = load(path)
+
+    if repository.nil?
+      url = "git@github.com:#{github_name}.git"
+      Git.clone(url, path)
+      repository = new(path)
+    end
+
+    repository.make_like_just_cloned! if options[:update]
+    repository
   end
 
   def is_git_repository?
@@ -19,6 +42,21 @@ class Manifestly::Repository
 
   def git
     Git.open(@path)
+  end
+
+  def make_like_just_cloned!
+    git.branch('master').checkout
+    git.fetch
+    git.reset_hard('origin/master')
+  end
+
+  def push_file!(local_file_path, repository_file_path, message)
+    full_repository_file_path = File.join(@path, repository_file_path)
+    FileUtils.cp(local_file_path, full_repository_file_path)
+    git.add(repository_file_path)
+    raise ManifestUnchanged if git.status.changed.empty?
+    git.commit(message)
+    git.push
   end
 
   COMMITS_PER_PAGE = 15
@@ -48,6 +86,14 @@ class Manifestly::Repository
     rescue Git::GitExecuteError => e
       raise CommitNotPresent, "SHA not found: #{sha}"
     end
+  end
+
+  def get_commit_lines(sha)
+    diff_lines = find_commit(sha).diff_parent.to_s.split("\n")
+    # ditch info lines and '-' lines
+    relevant_lines = diff_lines[5..-1].grep(/^[\+ ]/)
+    # remove the first character from each line ('+', ' ')
+    relevant_lines.collect{|line| line[1..-1]}
   end
 
   def checkout_commit(sha)

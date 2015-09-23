@@ -9,4 +9,5 @@
 /tmp/
 .DS_Store
 *.manifest
+.manifestly
 *.*~
