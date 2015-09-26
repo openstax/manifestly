@@ -29,12 +29,18 @@ module Manifestly
                   :required => false
     def create
       manifest = if options[:based_on]
-        Manifest.read(options[:based_on], available_repositories)
+        begin
+          Manifest.read(options[:based_on], available_repositories)
+        rescue Manifestly::ManifestItem::RepositoryNotFound
+          say "Couldn't find all the repositories listed in #{options[:based_on]}.  " +
+              "Did you specify --search_paths?"
+          return
+        end
       else
         Manifest.new
       end
 
-      present_manifest_menu(manifest)
+      present_create_menu(manifest)
     end
 
     desc "apply", "Sets the manifest's repository's current states to the commits listed in the manifest"
@@ -91,15 +97,22 @@ module Manifestly
     def pull
       repository = Repository.load_cached(options[:mfrepo], :update => true)
 
-      commit_lines = begin
-        repository.get_commit_lines(options[:sha])
-      rescue CommitNotPresent
+      commit_content = begin
+        repository.get_commit_content(options[:sha])
+      rescue Manifestly::Repository::CommitNotPresent
         say('That SHA is invalid')
         return
       end
 
-      save_as = options[:save_as] || "#{options[:sha][0..9]}.manifest"
-      File.open(save_as, 'w') { |file| file.write(commit_lines.join("\n")) }
+      save_as = options[:save_as]
+
+      if save_as.nil?
+        # Get the whole SHA so filenames are consistent
+        sha = repository.find_commit(options[:sha]).sha
+        save_as = "#{sha[0..9]}.manifest"
+      end
+
+      File.open(save_as, 'w') { |file| file.write(commit_content) }
     end
 
     desc "list", "Lists manifests from a manifest repository"
@@ -113,11 +126,13 @@ module Manifestly
                   :required => true
     def list
       repository = Repository.load_cached(options[:mfrepo], :update => true)
+      commits = repository.file_commits(options[:remote])
+      present_list_menu(commits, :show_author => true)
     end
 
     protected
 
-    def present_manifest_menu(manifest)
+    def present_create_menu(manifest)
       while true
         print_manifest(manifest)
 
@@ -147,9 +162,12 @@ module Manifestly
       end
     end
 
-    def present_commit_menu(manifest_item)
+    def present_commit_menu(manifest_item, options={})
+      page = 0
+
       while true
-        print_commit_shas(manifest_item)
+        options[:page] = page
+        print_commits(manifest_item.repository.commits, options)
 
         action, args = ask_and_split(
           '(n)ext or (p)revious page; (c)hoose index; (m)anual SHA entry; (t)oggle PRs only; (r)eturn:'
@@ -157,9 +175,9 @@ module Manifestly
 
         case action
         when 'n'
-          manifest_item.repository.next_page_of_commits
+          page += 1
         when 'p'
-          manifest_item.repository.prev_page_of_commits
+          page -= 1
         when 'c'
           indices = convert_args_to_indices(args, true) || next
           manifest_item.set_commit_by_index(indices.first)
@@ -175,7 +193,30 @@ module Manifestly
           end
         when 't'
           manifest_item.repository.toggle_prs_only
+          page = 0
         when 'r'
+          break
+        end
+      end
+    end
+
+    def present_list_menu(commits, options={})
+      page = 0
+
+      while true
+        options[:page] = page
+        print_commits(commits, options)
+
+        action, args = ask_and_split(
+          '(n)ext or (p)revious page; (q)uit:'
+        ) || next
+
+        case action
+        when 'n'
+          page += 1
+        when 'p'
+          page -= 1
+        when 'q'
           break
         end
       end
@@ -252,28 +293,60 @@ module Manifestly
       puts "\n"
     end
 
-    def print_commit_shas(manifest_item)
-      puts "\n"
-      puts "Commit SHAs for #{manifest_item.repository_name}:\n"
-      puts "\n"
+    def print_commits(commits, options={})
+      column_widths = {
+        :number => 4,
+        :sha => 10,
+        :message => 54,
+        :author => options[:show_author] ? 14 : 0,
+        :date => 25
+      }
+
+      num_columns = column_widths.values.count{|v| v != 0}
+      total_nominal_column_width =
+        column_widths.values.inject{|sum,x| sum + x } +
+        num_columns + 1          +    # |
+        num_columns * 2               # padding
+
+      width_overage = total_nominal_column_width - terminal_width
+
+      if width_overage > 0
+        column_widths[:message] -= width_overage
+      end
+
+      page = options[:page] || 0
+      per_page = options[:per_page] || 15
+
+      last_page = commits.size / per_page
+      last_page -= 1 if commits.size % per_page == 0 # account for full pages
+
+      page = 0 if page < 0
+      page = last_page if page > last_page
+
+      first_commit = page*per_page
+      last_commit  = [page*per_page+per_page-1, commits.size-1].min
+
+      page_commits = commits[first_commit..last_commit]
+
       table :border => true do
         row :header => true do
-          column "#", width: 4
-          column "SHA", width: 10
-          column "Message", width: 54
-          column "Date", width: 25
+          column "#", width: column_widths[:number]
+          column "SHA", width: column_widths[:sha]
+          column "Message", width: column_widths[:message]
+          column "Author", width: column_widths[:author] if options[:show_author]
+          column "Date", width: column_widths[:date]
         end
 
-        manifest_item.repository.commits.each_with_index do |commit, index|
+        page_commits.each_with_index do |commit, index|
           row do
             column "#{index}", align: 'right'
             column "#{commit.sha[0..9]}"
             column "#{summarize_commit_message(commit)}"
+            column "#{commit.author.name[0..13]}" if options[:show_author]
             column "#{commit.date}"
           end
         end
       end
-      puts "\n"
     end
 
     def summarize_commit_message(commit)
@@ -303,6 +376,23 @@ module Manifestly
 
     def repository_search_paths
       [options[:search_paths]].flatten
+    end
+
+    def terminal_height
+      # This code was derived from Thor and from Rake, the latter of which is
+      # available under MIT-LICENSE Copyright 2003, 2004 Jim Weirich
+      if ENV["THOR_ROWS"]
+        result = ENV["THOR_ROWS"].to_i
+      else
+        result = unix? ? dynamic_width : 40
+      end
+      result < 10 ? 40 : result
+    rescue
+      40
+    end
+
+    def dynamic_height
+      %x{stty size 2>/dev/null}.split[0].to_i
     end
 
   end
