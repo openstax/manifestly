@@ -13,29 +13,83 @@ module Manifestly
     include CommandLineReporter
     include Manifestly::Ui
 
+    #
+    # Common command line options
+    #
+
     def self.search_paths_option
       method_option :search_paths,
                     :desc => "A list of paths where git repositories can be found",
                     :type => :array,
                     :required => false,
+                    :banner => '',
                     :default => '.'
     end
+
+    def self.repo_option
+      method_option :repo,
+                    :desc => "The github manifest repository to use, given as 'organization/reponame'",
+                    :type => :string,
+                    :banner => '',
+                    :required => true
+    end
+
+    def self.repo_file_option(description=nil)
+      description ||= "The name of the repository file, with path if applicable"
+      method_option :repo_file,
+                    :desc => description,
+                    :type => :string,
+                    :banner => '',
+                    :required => true
+    end
+
+    def self.file_option(description_action=nil)
+      description = "The local manifest file"
+      description += " to #{description_action}" if description_action
+
+      method_option :file,
+                    :desc => description,
+                    :type => :string,
+                    :banner => '',
+                    :required => true
+    end
+
+    #
+    # Command-line actions
+    #
 
     desc "create", "Create a new manifest"
     search_paths_option
     method_option :based_on,
                   :desc => "A manifest file to use as a starting point",
                   :type => :string,
+                  :banner => '',
                   :required => false
+    long_desc <<-DESC
+      Interactively create a manifest file, either from scratch or using
+      an exisitng manifest as a starting point.
+
+      Examples:
+
+      $ manifestly create\x5
+      Create manifest from scratch with the default search path
+
+      $ manifestly create --search_paths=..\x5
+      Create manifest looking for repositories one dir up
+
+      $ manifestly create --based_on=~my.manifest --search_paths=~jim/repos\x5
+      Create manifest starting from an existing one
+    DESC
     def create
       manifest = if options[:based_on]
-        begin
-          Manifest.read(options[:based_on], available_repositories)
-        rescue Manifestly::ManifestItem::RepositoryNotFound
-          say "Couldn't find all the repositories listed in #{options[:based_on]}.  " +
-              "Did you specify --search_paths?"
-          return
-        end
+        read_manifest(options[:based_on]) || return
+        # begin
+        #   Manifest.read(options[:based_on], available_repositories)
+        # rescue Manifestly::ManifestItem::RepositoryNotFound
+        #   say "Couldn't find all the repositories listed in #{options[:based_on]}.  " +
+        #       "Did you specify --search_paths?"
+        #   return
+        # end
       else
         Manifest.new
       end
@@ -45,33 +99,22 @@ module Manifestly
 
     desc "apply", "Sets the manifest's repository's current states to the commits listed in the manifest"
     search_paths_option
-    method_option :file,
-                  :desc => "The manifest file to apply",
-                  :type => :string,
-                  :required => true
+    file_option("apply")
     def apply
-      manifest = Manifest.read(options[:file], available_repositories)
+      manifest = read_manifest(options[:file]) || return
       manifest.items.each(&:checkout_commit!)
     end
 
-    desc "push", "Pushes a local manifest file to a manifest repository"
-    method_option :local,
-                  :desc => 'The local manifest file to push',
-                  :type => :string,
-                  :required => true
-    method_option :mfrepo,
-                  :desc => "The repository to push to (full URL or 'organization/reponame')",
-                  :type => :string,
-                  :required => true
-    method_option :remote,  # mfrepo_file?
-                  :desc => "The name of the remote file",
-                  :type => :string,
-                  :required => true
+    desc "upload", "Upload a local manifest file to a manifest repository"
+    file_option("upload")
+    repo_option
+    repo_file_option("The name of the manifest to upload to in the repository, with path if applicable")
     method_option :message,
-                  :desc => "A commit message describing this manifest",
+                  :desc => "A message to permanently record with this manifest",
                   :type => :string,
+                  :banner => '',
                   :required => true
-    def push
+    def upload
       repository = Repository.load_cached(options[:mfrepo], :update => true)
 
       begin
@@ -81,20 +124,19 @@ module Manifestly
       end
     end
 
-    desc "pull", "Downloads a manifest file from a manifest repository"
+    desc "download", "Downloads a manifest file from a manifest repository"
     method_option :sha,
                   :desc => "The commit SHA of the manifest on the remote repository",
                   :type => :string,
+                  :banner => '',
                   :required => true
-    method_option :mfrepo,
-                  :desc => "The manifest repository to pull from (full URL or 'organization/reponame')",
-                  :type => :string,
-                  :required => true
+    repo_option
     method_option :save_as,
                   :desc => "The name to use for the downloaded file (defaults to '<SHA>.manifest')",
                   :type => :string,
+                  :banner => '',
                   :required => false
-    def pull
+    def download
       repository = Repository.load_cached(options[:mfrepo], :update => true)
 
       commit_content = begin
@@ -115,15 +157,9 @@ module Manifestly
       File.open(save_as, 'w') { |file| file.write(commit_content) }
     end
 
-    desc "list", "Lists manifests from a manifest repository"
-    method_option :mfrepo,
-                  :desc => "The manifest repository to read from (full URL or 'organization/reponame')",
-                  :type => :string,
-                  :required => true
-    method_option :remote,
-                  :desc => "The name of the manifest to read from",
-                  :type => :string,
-                  :required => true
+    desc "list", "Lists variants of one manifest from a manifest repository"
+    repo_option
+    repo_file_option("list variants of")
     def list
       repository = Repository.load_cached(options[:mfrepo], :update => true)
       commits = repository.file_commits(options[:remote])
@@ -245,6 +281,16 @@ module Manifestly
         false
       else
         args.collect{|index| index.to_i}
+      end
+    end
+
+    def read_manifest(file)
+      begin
+        Manifest.read(file, available_repositories)
+      rescue Manifestly::ManifestItem::RepositoryNotFound
+        say "Couldn't find all the repositories listed in #{file}.  " +
+            "Might need to specify --search_paths."
+        nil
       end
     end
 
