@@ -184,6 +184,8 @@ module Manifestly
 
           manifest.write(filename)
           break
+        when 'q!'
+          break
         when 'q'
           break if yes?('Are you sure you want to quit? (y or yes):')
         end
@@ -292,11 +294,18 @@ module Manifestly
         repository_choices,
         hide_shortcuts: true,
         choice_name: "repository",
-        question: "\nChoose which repositories you want in the manifest (e.g. '0 2 5'):"
+        question: "\nChoose which repositories you want in the manifest (e.g. '0 2 5') or (r)eturn:",
+        no_selection: 'r'
       )
 
+      return if selected_repositories.nil?
+
       selected_repositories.each do |repository|
-        manifest.add_repository(repository)
+        begin
+          manifest.add_repository(repository)
+        rescue Manifestly::Repository::NoCommitsError => e
+          say "Cannot add #{repository.display_name} because it doesn't have any commits."
+        end
       end
     end
 
@@ -396,7 +405,7 @@ module Manifestly
     end
 
     def repository_choices
-      available_repositories.collect{|repo| {display: repo.github_name || repo.working_dir, value: repo}}
+      available_repositories.collect{|repo| {display: repo.display_name, value: repo}}
     end
 
     def available_repositories

@@ -6,6 +6,7 @@ module Manifestly
     class CommitNotPresent < StandardError; end
     class ManifestUnchanged < StandardError; end
     class CommitContentError < StandardError; end
+    class NoCommitsError < StandardError; end
 
     # Returns an object if can load a git repository at the specified path,
     # otherwise nil
@@ -64,9 +65,13 @@ module Manifestly
     end
 
     def commits
-      log = git.log(1000000) # don't limit
-      log = log.grep("Merge pull request") if @prs_only
-      log
+      begin
+        log = git.log(1000000) # don't limit
+        log = log.grep("Merge pull request") if @prs_only
+        log.tap(&:first) # tap to force otherwise lazy checks
+      rescue Git::GitExecuteError => e
+        raise NoCommitsError
+      end
     end
 
     # returns the commit matching the provided sha or raises
@@ -119,6 +124,10 @@ module Manifestly
 
     def working_dir
       git.dir
+    end
+
+    def display_name
+      github_name || working_dir
     end
 
     protected

@@ -10,7 +10,7 @@ module Manifestly
     end
 
     def repository_name
-      @repository.github_name
+      @repository.display_name
     end
 
     def set_commit_by_index(index)

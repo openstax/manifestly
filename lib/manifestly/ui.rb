@@ -47,6 +47,10 @@ module Manifestly
 
           selected_indices = ask(options[:question]).split(" ")
 
+          return if ( options[:no_selection] &&
+                      selected_indices.length == 1 &&
+                      selected_indices[0] == options[:no_selection] )
+
           if selected_indices.length != 1 && options[:select_one]
             say Rainbow("Please choose only one #{options[:choice_name]}! (or CTRL + C to exit)").red
             options[:hide_choices] = true

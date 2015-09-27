@@ -5,7 +5,11 @@ describe Manifestly do
     expect(Manifestly::VERSION).not_to be nil
   end
 
-  it 'does something useful' do
-    expect(false).to eq(true)
+  xit 'creates a manifest' do
+    allow(Thor::LineEditor).to receive(:readline).and_return('a', '3', 'w', 'test.manifest')
+
+    capture(:stdout) {
+      Manifestly::CLI.start(%W[create --search_paths=#{absolutize_gem_path('./spec/fixtures/app_repos')}])
+    }
   end
 end
