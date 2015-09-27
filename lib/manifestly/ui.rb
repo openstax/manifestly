@@ -29,8 +29,8 @@ module Manifestly
           say Rainbow("The input '#{options[:inputs].join(' ')}' did not match any choices.").red if selections.empty?
         else
           if !options[:hide_choices]
-            table :border => false do
-              row :header => true do
+            table border: false do
+              row header: true do
                 column "", width: 4
                 column options[:choice_name].capitalize, width: 40
                 column "Shortcut", width:10 unless options[:hide_shortcuts]

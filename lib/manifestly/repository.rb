@@ -19,6 +19,8 @@ module Manifestly
     def self.load_cached(github_name, options)
       options[:update] ||= false
 
+      raise(IllegalArgument, "Repository name is blank.") if github_name.blank?
+
       path = "./.manifestly/.manifest_repositories/#{github_name}"
       FileUtils.mkdir_p(path)
 
@@ -77,19 +79,20 @@ module Manifestly
     end
 
     def get_commit_content(sha)
-      sha_diff = Diff.new(find_commit(sha).diff_parent.to_s)
+      diff_string = find_commit("#{sha}^").diff(sha).to_s
+      sha_diff = Diff.new(diff_string)
 
       raise(CommitContentError, "No content to retrieve for SHA #{sha}!") if sha_diff.num_files == 0
       raise(CommitContentError, "More than one file in the commit for SHA #{sha}!") if sha_diff.num_files > 1
 
-      sha_diff.files[0].to_content
+      sha_diff[0].to_content
     end
 
     def file_commits(file)
       commits = git.log
       commits = commits.select do |commit|
         diff = Diff.new(commit.diff_parent.to_s)
-        diff.has_file?(file)
+        diff.has_surviving_file?(file)
       end
     end
 

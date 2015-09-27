@@ -4,8 +4,6 @@ require 'command_line_reporter'
 require 'git'
 require 'securerandom'
 
-# TODO make ruby 1.9 compatible
-
 module Manifestly
   class CLI < Thor
     package_name "manifestly"
@@ -19,28 +17,28 @@ module Manifestly
 
     def self.search_paths_option
       method_option :search_paths,
-                    :desc => "A list of paths where git repositories can be found",
-                    :type => :array,
-                    :required => false,
-                    :banner => '',
-                    :default => '.'
+                    desc: "A list of paths where git repositories can be found",
+                    type: :array,
+                    required: false,
+                    banner: '',
+                    default: '.'
     end
 
     def self.repo_option
       method_option :repo,
-                    :desc => "The github manifest repository to use, given as 'organization/reponame'",
-                    :type => :string,
-                    :banner => '',
-                    :required => true
+                    desc: "The github manifest repository to use, given as 'organization/reponame'",
+                    type: :string,
+                    banner: '',
+                    required: true
     end
 
     def self.repo_file_option(description=nil)
       description ||= "The name of the repository file, with path if applicable"
       method_option :repo_file,
-                    :desc => description,
-                    :type => :string,
-                    :banner => '',
-                    :required => true
+                    desc: description,
+                    type: :string,
+                    banner: '',
+                    required: true
     end
 
     def self.file_option(description_action=nil)
@@ -48,10 +46,10 @@ module Manifestly
       description += " to #{description_action}" if description_action
 
       method_option :file,
-                    :desc => description,
-                    :type => :string,
-                    :banner => '',
-                    :required => true
+                    desc: description,
+                    type: :string,
+                    banner: '',
+                    required: true
     end
 
     #
@@ -61,10 +59,10 @@ module Manifestly
     desc "create", "Create a new manifest"
     search_paths_option
     method_option :based_on,
-                  :desc => "A manifest file to use as a starting point",
-                  :type => :string,
-                  :banner => '',
-                  :required => false
+                  desc: "A manifest file to use as a starting point",
+                  type: :string,
+                  banner: '',
+                  required: false
     long_desc <<-DESC
       Interactively create a manifest file, either from scratch or using
       an exisitng manifest as a starting point.
@@ -83,13 +81,6 @@ module Manifestly
     def create
       manifest = if options[:based_on]
         read_manifest(options[:based_on]) || return
-        # begin
-        #   Manifest.read(options[:based_on], available_repositories)
-        # rescue Manifestly::ManifestItem::RepositoryNotFound
-        #   say "Couldn't find all the repositories listed in #{options[:based_on]}.  " +
-        #       "Did you specify --search_paths?"
-        #   return
-        # end
       else
         Manifest.new
       end
@@ -110,15 +101,15 @@ module Manifestly
     repo_option
     repo_file_option("The name of the manifest to upload to in the repository, with path if applicable")
     method_option :message,
-                  :desc => "A message to permanently record with this manifest",
-                  :type => :string,
-                  :banner => '',
-                  :required => true
+                  desc: "A message to permanently record with this manifest",
+                  type: :string,
+                  banner: '',
+                  required: true
     def upload
-      repository = Repository.load_cached(options[:mfrepo], :update => true)
+      repository = Repository.load_cached(options[:repo], update: true)
 
       begin
-        repository.push_file!(options[:local], options[:remote], options[:message])
+        repository.push_file!(options[:file], options[:repo_file], options[:message])
       rescue Manifestly::Repository::ManifestUnchanged => e
         say "The manifest you requested to push is already the latest and so could not be pushed."
       end
@@ -126,18 +117,18 @@ module Manifestly
 
     desc "download", "Downloads a manifest file from a manifest repository"
     method_option :sha,
-                  :desc => "The commit SHA of the manifest on the remote repository",
-                  :type => :string,
-                  :banner => '',
-                  :required => true
+                  desc: "The commit SHA of the manifest on the remote repository",
+                  type: :string,
+                  banner: '',
+                  required: true
     repo_option
     method_option :save_as,
-                  :desc => "The name to use for the downloaded file (defaults to '<SHA>.manifest')",
-                  :type => :string,
-                  :banner => '',
-                  :required => false
+                  desc: "The name to use for the downloaded file (defaults to '<SHA>.manifest')",
+                  type: :string,
+                  banner: '',
+                  required: false
     def download
-      repository = Repository.load_cached(options[:mfrepo], :update => true)
+      repository = Repository.load_cached(options[:repo], update: true)
 
       commit_content = begin
         repository.get_commit_content(options[:sha])
@@ -155,15 +146,16 @@ module Manifestly
       end
 
       File.open(save_as, 'w') { |file| file.write(commit_content) }
+      say "Downloaded #{save_as}.  #{commit_content.split("\n").count} line(s)."
     end
 
     desc "list", "Lists variants of one manifest from a manifest repository"
     repo_option
     repo_file_option("list variants of")
     def list
-      repository = Repository.load_cached(options[:mfrepo], :update => true)
-      commits = repository.file_commits(options[:remote])
-      present_list_menu(commits, :show_author => true)
+      repository = Repository.load_cached(options[:repo], update: true)
+      commits = repository.file_commits(options[:repo_file])
+      present_list_menu(commits, show_author: true)
     end
 
     protected
@@ -312,8 +304,8 @@ module Manifestly
       puts "\n"
       puts "Current Manifest:\n"
       puts "\n"
-      table :border => false do
-        row :header => true do
+      table border: false do
+        row header: true do
           column "#", width: 4
           column "Repository", width: 36
           column "Branch", width: 30
@@ -341,20 +333,21 @@ module Manifestly
 
     def print_commits(commits, options={})
       column_widths = {
-        :number => 4,
-        :sha => 10,
-        :message => 54,
-        :author => options[:show_author] ? 14 : 0,
-        :date => 25
+        number: 4,
+        sha: 10,
+        message: 54,
+        author: options[:show_author] ? 14 : 0,
+        date: 25
       }
 
       num_columns = column_widths.values.count{|v| v != 0}
-      total_nominal_column_width =
-        column_widths.values.inject{|sum,x| sum + x } +
-        num_columns + 1          +    # |
-        num_columns * 2               # padding
+      total_column_widths = column_widths.values.inject{|sum,x| sum + x }
+      total_table_width =
+        total_column_widths +
+        num_columns + 1     +    # column separators
+        num_columns * 2          # padding
 
-      width_overage = total_nominal_column_width - terminal_width
+      width_overage = total_table_width - terminal_width
 
       if width_overage > 0
         column_widths[:message] -= width_overage
@@ -374,8 +367,8 @@ module Manifestly
 
       page_commits = commits[first_commit..last_commit]
 
-      table :border => true do
-        row :header => true do
+      table border: true do
+        row header: true do
           column "#", width: column_widths[:number]
           column "SHA", width: column_widths[:sha]
           column "Message", width: column_widths[:message]

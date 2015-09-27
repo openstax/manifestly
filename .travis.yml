@@ -1,3 +1,8 @@
+sudo: false
 language: ruby
 rvm:
   - 1.9.3
+cache: bundler
+bundler_args: --retry=6
+script:
+  - bundle exec rake
