@@ -46,6 +46,10 @@ module Manifestly
       end
     end
 
+    def includes?(repository)
+      @items.any?{|item| item.repository.display_name == repository.display_name}
+    end
+
     attr_reader :items
 
     def empty?

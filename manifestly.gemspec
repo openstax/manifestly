@@ -22,6 +22,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'rainbow'
   spec.add_dependency 'command_line_reporter'
   spec.add_dependency 'git'
+  spec.add_dependency 'ruby-progressbar'
 
   spec.add_development_dependency 'byebug'
   spec.add_development_dependency "bundler", "~> 1.9"

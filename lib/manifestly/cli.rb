@@ -3,6 +3,7 @@ require 'rainbow'
 require 'command_line_reporter'
 require 'git'
 require 'securerandom'
+require 'ruby-progressbar'
 
 module Manifestly
   class CLI < Thor
@@ -67,6 +68,42 @@ module Manifestly
       Interactively create a manifest file, either from scratch or using
       an exisitng manifest as a starting point.
 
+      When run, the current manifest will be shown and you will have the
+      following options:
+
+      (a)dd repository - entering 'a' will show you a list of repositories
+        that can be added.  Select multiple by index on this chooser screen.
+
+      (r)emove repository - entering 'r' followed by a manifest index will
+        remove that repository from the manifest, e.g. 'r 3'
+
+      (f)etch - entering 'f' will fetch the contents of the manifest repos.
+        The selectable commits will only include those that have been fetched.
+
+      (c)hoose commit - entering 'c' followed by a manifest index will show
+        you a screen where you can choose the manifest commit for that repo.
+        (see details below)
+
+      (w)rite manifest - entering 'w' will prompt you for a name to use when
+        writing out the manifest to disk.
+
+      (q)uit - entering 'q' exits with a "are you sure?" prompt. 'q!' exits
+        immediately.
+
+      When choosing commits,
+
+      (n)ext page / (p)revious page - entering 'n' or 'p' will page through commits.
+
+      (c)hoose index - entering 'c' followed by a table index chooses that commit,
+        e.g. 'c 12'
+
+      (m)anual SHA entry - entering 'm' followed by a SHA fragment selects that
+        commit, e.g. 'm 8623e'
+
+      (t)oggle PRs only - entering 't' toggles filtering by PR commits only
+
+      (r)eturn - entering 'r' returns to the previous menu
+
       Examples:
 
       $ manifestly create\x5
@@ -91,8 +128,18 @@ module Manifestly
     desc "apply", "Sets the manifest's repository's current states to the commits listed in the manifest"
     search_paths_option
     file_option("apply")
+    long_desc <<-DESC
+      Check to make sure the repositories you are deploying from have their state committed.
+    DESC
     def apply
-      manifest = read_manifest(options[:file]) || return
+      begin
+        manifest = read_manifest(options[:file]) || return
+      rescue Manifestly::ManifestItem::MultipleSameNameRepositories => e
+        say "Multiple repositories have the same name (#{e.message}) so we " +
+            "can't apply the manifest. Try limiting the search_paths or " +
+            "separate the duplicates."
+        return
+      end
       manifest.items.each(&:checkout_commit!)
     end
 
@@ -105,6 +152,11 @@ module Manifestly
                   type: :string,
                   banner: '',
                   required: true
+    long_desc <<-DESC
+      Upload a manifest when you want to share it with others or persist it
+      permanently.  Since manifests are stored remotely as versions of a file
+      in git, it cannot be changed once uploaded.
+    DESC
     def upload
       repository = Repository.load_cached(options[:repo], update: true)
 
@@ -127,6 +179,11 @@ module Manifestly
                   type: :string,
                   banner: '',
                   required: false
+    long_desc <<-DESC
+      You must have a copy of a manifest locally to `apply` it to your local
+      repositories.  A local copy is also useful when creating a new manifest
+      based on an existing one.
+    DESC
     def download
       repository = Repository.load_cached(options[:repo], update: true)
 
@@ -152,6 +209,12 @@ module Manifestly
     desc "list", "Lists variants of one manifest from a manifest repository"
     repo_option
     repo_file_option("list variants of")
+    long_desc <<-DESC
+      Right now you can't do much other than see the versions of a manifest.
+      (Versions of a manifest are just revisions of the file in a git history,
+      which is why the versions are identified by SHA hashes.).  Later we can
+      add the ability to download, apply, or create directly from the listing.
+    DESC
     def list
       repository = Repository.load_cached(options[:repo], update: true)
       commits = repository.file_commits(options[:repo_file])
@@ -165,7 +228,7 @@ module Manifestly
         print_manifest(manifest)
 
         action, args = ask_and_split(
-          '(a)dd or (r)emove repository; (c)hoose commit; (w)rite manifest; (q)uit:'
+          '(a)dd or (r)emove repository; (f)etch; (c)hoose commit; (w)rite manifest; (q)uit:'
         ) || next
 
         case action
@@ -174,6 +237,12 @@ module Manifestly
         when 'r'
           indices = convert_args_to_indices(args) || next
           manifest.remove_repositories_by_index(indices)
+        when 'f'
+          progress = ProgressBar.create(title: "Fetching", total: manifest.items.count)
+          manifest.items.each do |item|
+            item.fetch
+            progress.increment
+          end
         when 'c'
           indices = convert_args_to_indices(args, true) || next
           present_commit_menu(manifest[indices.first])
@@ -290,8 +359,9 @@ module Manifestly
 
     def add_repositories(manifest)
       puts "\n"
+
       selected_repositories = select(
-        repository_choices,
+        repository_choices(manifest),
         hide_shortcuts: true,
         choice_name: "repository",
         question: "\nChoose which repositories you want in the manifest (e.g. '0 2 5') or (r)eturn:",
@@ -404,8 +474,11 @@ module Manifestly
         .gsub(/\s+/, ' ')[0..79]
     end
 
-    def repository_choices
-      available_repositories.collect{|repo| {display: repo.display_name, value: repo}}
+    def repository_choices(except_in_manifest=nil)
+      choices = available_repositories.collect{|repo| {display: repo.display_name, value: repo}}
+      except_in_manifest.nil? ?
+        choices :
+        choices.reject{|choice| except_in_manifest.includes?(choice[:value])}
     end
 
     def available_repositories

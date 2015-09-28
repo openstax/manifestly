@@ -3,10 +3,11 @@ module Manifestly
 
     class InvalidManifestItem < StandardError; end
     class RepositoryNotFound < StandardError; end
+    class MultipleSameNameRepositories < StandardError; end
 
     def initialize(repository)
       @repository = repository
-      @commit = repository.commits.first
+      @commit = repository.current_commit
     end
 
     def repository_name
@@ -21,6 +22,10 @@ module Manifestly
       @commit = @repository.find_commit(sha)
     end
 
+    def fetch
+      @repository.fetch
+    end
+
     def checkout_commit!
       @repository.checkout_commit(@commit.sha)
     end
@@ -33,8 +38,10 @@ module Manifestly
       repo_name, sha = string.split('@').collect(&:strip)
       raise(InvalidManifestItem, string) if repo_name.blank? || sha.blank?
 
-      repository = repositories.select{|repo| repo.github_name == repo_name}.first
-      raise(RepositoryNotFound, repo_name) if repository.nil?
+      matching_repositories = repositories.select{|repo| repo.github_name == repo_name}
+      raise(MultipleSameNameRepositories, repo_name) if matching_repositories.size > 1
+      raise(RepositoryNotFound, repo_name) if matching_repositories.empty?
+      repository = matching_repositories.first
 
       item = ManifestItem.new(repository)
       item.set_commit_by_sha(sha)

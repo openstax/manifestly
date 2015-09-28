@@ -45,6 +45,10 @@ module Manifestly
       end
     end
 
+    def fetch
+      git.fetch
+    end
+
     def git
       Git.open(@path)
     end
@@ -66,7 +70,7 @@ module Manifestly
 
     def commits
       begin
-        log = git.log(1000000) # don't limit
+        log = git.log(1000000).object('origin/master') # don't limit
         log = log.grep("Merge pull request") if @prs_only
         log.tap(&:first) # tap to force otherwise lazy checks
       rescue Git::GitExecuteError => e
@@ -109,6 +113,11 @@ module Manifestly
       git.lib.branch_current
     end
 
+    def current_commit
+      sha = git.show.split("\n")[0].split(" ")[1]
+      find_commit(sha)
+    end
+
     def toggle_prs_only
       @prs_only = !@prs_only
     end
@@ -127,7 +136,17 @@ module Manifestly
     end
 
     def display_name
-      github_name || working_dir
+      if github_name
+        repo_name = github_name.split('/').last
+        dir_name = working_dir.to_s.split(File::SEPARATOR).last
+        if repo_name == dir_name
+          github_name
+        else
+          github_name + " (#{dir_name})"
+        end
+      else
+        working_dir.to_s
+      end
     end
 
     protected
