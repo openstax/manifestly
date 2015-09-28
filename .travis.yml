@@ -3,6 +3,7 @@ language: ruby
 rvm:
   - 1.9.3
 cache: bundler
+before_install: gem install bundler
 bundler_args: --retry=6
 script:
   - bundle exec rake
