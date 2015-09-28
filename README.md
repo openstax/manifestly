@@ -1,3 +1,6 @@
+[![Gem Version](https://badge.fury.io/rb/manifestly.svg)](http://badge.fury.io/rb/manifestly)
+[![Build Status](https://travis-ci.org/openstax/manifestly.svg?branch=master)](https://travis-ci.org/openstax/manifestly)
+
 # Manifestly
 
 Manifestly helps you manage complicated deployments involving multiple sites and git repositories.
