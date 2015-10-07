@@ -38,9 +38,14 @@ module Manifestly
       repo_name, sha = string.split('@').collect(&:strip)
       raise(InvalidManifestItem, string) if repo_name.blank? || sha.blank?
 
-      matching_repositories = repositories.select{|repo| repo.github_name == repo_name}
+      matching_repositories = repositories.select do |repo|
+        repo.github_name      == repo_name ||
+        repo.working_dir.to_s == repo_name
+      end
+
       raise(MultipleSameNameRepositories, repo_name) if matching_repositories.size > 1
       raise(RepositoryNotFound, repo_name) if matching_repositories.empty?
+
       repository = matching_repositories.first
 
       item = ManifestItem.new(repository)

@@ -127,8 +127,9 @@ module Manifestly
     end
 
     def github_name
+      # Extract 'org/reponame' out of remote url for both HTTP and SSH clones
       return nil if origin.nil?
-      origin.url[/github.com.(.*).git/,1]
+      origin.url[/github.com.(.*?)(.git)?$/,1]
     end
 
     def working_dir
