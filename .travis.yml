@@ -4,6 +4,9 @@ rvm:
   - 2.2.3
 cache: bundler
 before_install: gem install bundler
+branches:
+  only:
+    - master
 bundler_args: --retry=6
 script:
   - bundle exec rake
