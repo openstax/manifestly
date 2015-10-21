@@ -26,11 +26,18 @@ index 0f7aa75..0000000
 TEXT
 }
 
+let!(:deleted_file_no_change_diff) { <<-TEXT
+diff --git a/foo b/foo
+deleted file mode 100644
+index e69de29..0000000
+TEXT
+}
+
   it 'can parse new file diff' do
     diff = Manifestly::Diff.new(new_file_diff)
 
     expect(diff.num_files).to eq 1
-    expect(diff.has_surviving_file?('foo')).to be_truthy
+    expect(diff.has_file?('foo')).to be_truthy
     expect(diff[0].from_name).to be_nil
     expect(diff[0].to_name).to eq 'foo'
     expect(diff[0].from_content).to eq ''
@@ -41,13 +48,22 @@ TEXT
     diff = Manifestly::Diff.new(deleted_file_diff)
 
     expect(diff.num_files).to eq 1
-    expect(diff.has_surviving_file?('foo')).to be_falsy
+    expect(diff.has_file?('foo')).to be_truthy
     expect(diff[0].from_name).to eq 'foo'
     expect(diff[0].to_name).to be_nil
     expect(diff[0].from_content).to eq "org/repo1 @ sha1\norg/repo2 @ sha2"
     expect(diff[0].to_content).to eq ''
+  end
 
+  it 'can parse a deleted file diff when there are no content changes' do
+    diff = Manifestly::Diff.new(deleted_file_no_change_diff)
 
+    expect(diff.num_files).to eq 1
+    expect(diff.has_file?('foo')).to be_truthy
+    expect(diff[0].from_name).to eq 'foo'
+    expect(diff[0].to_name).to be_nil
+    expect(diff[0].from_content).to be_nil
+    expect(diff[0].to_content).to be_nil
   end
 
 end

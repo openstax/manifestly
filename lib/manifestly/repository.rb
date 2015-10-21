@@ -101,7 +101,7 @@ module Manifestly
       commits = git.log
       commits = commits.select do |commit|
         diff = Diff.new(commit.diff_parent.to_s)
-        diff.has_surviving_file?(file)
+        diff.has_file?(file)
       end
     end
 
