@@ -40,6 +40,9 @@ module Manifestly
 
     def write(filename)
       File.open(filename, 'w') do |file|
+        @items.sort_by! do |item|
+          item[:repository_name]
+        end
         @items.each do |item|
           file.write(item.to_file_string + "\n")
         end
