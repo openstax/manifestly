@@ -64,8 +64,50 @@ module Manifestly
                   type: :string,
                   banner: '',
                   required: false
+    method_option :interactive,
+                  desc: "Use interactive creation",
+                  banner: '',
+                  aliases: "-i",
+                  type: :boolean,
+                  default: false,
+                  required: false
+    method_option :add,
+                  desc: "Paths to repositories to add (non-interactive only)",
+                  type: :array,
+                  banner: '',
+                  required: false,
+                  default: []
+    method_option :remove,
+                  desc: "Paths to repositories to remove (before any `add`ed, non-interactive only)",
+                  type: :array,
+                  banner: '',
+                  required: false,
+                  default: []
+    method_option :save_as,
+                  desc: "The name to use for the created manifest file",
+                  type: :string,
+                  banner: '',
+                  required: false,
+                  default: ''
     long_desc <<-DESC
-      Interactively create a manifest file, either from scratch or using
+      Creates a manifest.
+
+      NON-INTERACTIVE CREATION
+
+      Examples:
+
+      $ manifestly create --search_paths=.. --add=repo1 repo2 repo3
+
+      The above is the same as:
+
+      $ manifestly create --add=../repo1 ../repo2 ../repo3
+
+      $ manifestly create --based_on=existing.manifest --remove=repo1 --save_as=new.manifest
+
+      INTERACTIVE CREATION
+
+      If the interactive option is specified, a series of screens will guide
+      you through creation of a manifest file, either from scratch or using
       an exisitng manifest as a starting point.
 
       When run, the current manifest will be shown and you will have the
@@ -106,13 +148,13 @@ module Manifestly
 
       Examples:
 
-      $ manifestly create\x5
+      $ manifestly create -i\x5
       Create manifest from scratch with the default search path
 
-      $ manifestly create --search_paths=..\x5
+      $ manifestly create -i --search_paths=..\x5
       Create manifest looking for repositories one dir up
 
-      $ manifestly create --based_on=~my.manifest --search_paths=~jim/repos\x5
+      $ manifestly create -i --based_on=~my.manifest --search_paths=~jim/repos\x5
       Create manifest starting from an existing one
     DESC
     def create
@@ -122,7 +164,21 @@ module Manifestly
         Manifest.new
       end
 
-      present_create_menu(manifest)
+      if options[:interactive]
+        present_create_menu(manifest)
+      else
+        repos_to_remove = get_repos_from_options(options[:remove])
+        repos_to_remove.each do |repo_to_remove|
+          manifest.remove_repository(repo_to_remove)
+        end
+
+        repos_to_add = get_repos_from_options(options[:add])
+        repos_to_add.each do |repo_to_add|
+          manifest.add_repository(repo_to_add)
+        end
+
+        write_manifest(manifest, false)
+      end
     end
 
     desc "apply", "Sets the manifest's repository's current states to the commits listed in the manifest"
@@ -247,11 +303,7 @@ module Manifestly
           indices = convert_args_to_indices(args, true) || next
           present_commit_menu(manifest[indices.first])
         when 'w'
-          default_filename = Time.now.strftime("%Y%m%d-%H%M%S") + "-#{::SecureRandom.hex(2)}.manifest"
-          filename = ask("Enter desired manifest filename (ENTER for '#{default_filename}'):")
-          filename = default_filename if filename.blank?
-
-          manifest.write(filename)
+          write_manifest(manifest, true)
           break
         when 'q!'
           break
@@ -259,6 +311,20 @@ module Manifestly
           break if yes?('Are you sure you want to quit? (y or yes):')
         end
       end
+    end
+
+    def write_manifest(manifest, prompt_for_filename=false, filename="")
+      default_filename = options[:save_as].blank? ?
+                           Time.now.strftime("%Y%m%d-%H%M%S") + "-#{::SecureRandom.hex(2)}.manifest" :
+                           options[:save_as]
+
+      if prompt_for_filename
+        filename = ask("Enter desired manifest filename (ENTER for '#{default_filename}'):")
+      end
+
+      filename = default_filename if filename.blank?
+
+      manifest.write(filename)
     end
 
     def present_commit_menu(manifest_item, options={})
@@ -514,6 +580,28 @@ module Manifestly
 
     def dynamic_height
       %x{stty size 2>/dev/null}.split[0].to_i
+    end
+
+    def get_repos_from_options(options)
+      if options.include?("all")
+        available_repositories
+      else
+        dirs = options.collect{|option| find_dir(option)}.compact
+        dirs.collect{|dir| Repository.load(dir)}
+      end
+    end
+
+    # Finds the provided directory looking first to see if it is an absolute
+    # directory, and then looking for it on the search paths
+    def find_dir(path)
+      return path if path.starts_with?('/') && Dir.exist?(path)
+
+      repository_search_paths.each do |search_path|
+        combined_path = File.join(search_path, path)
+        return combined_path if Dir.exist?(combined_path)
+      end
+
+      nil
     end
 
   end

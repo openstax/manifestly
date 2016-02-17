@@ -45,6 +45,14 @@ module Manifestly
       end
     end
 
+    def has_commits?
+      begin
+        git && commits
+      rescue NoCommitsError
+        false
+      end
+    end
+
     def fetch
       git.fetch
     end
