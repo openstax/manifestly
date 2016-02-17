@@ -94,6 +94,18 @@ module Manifestly
 
       NON-INTERACTIVE CREATION
 
+      Three options are of particular use when using non-interactive creation:
+
+      --add: a space-separated list of repository paths to add, can be relative or
+      absolute path names; if relative, manifestly tries to find them based on the
+      --search_paths option. The special all option adds all available repos.
+
+      --remove: a space-separated list of repository paths to remove, only useful
+      if you've also passed a --based_on manifest as a starting point.
+
+      --save_as: lets you provide a name for the created manifest, otherwise defaults
+      to a timestamp name with a random hex hash
+
       Examples:
 
       $ manifestly create --search_paths=.. --add=repo1 repo2 repo3
@@ -101,6 +113,10 @@ module Manifestly
       The above is the same as:
 
       $ manifestly create --add=../repo1 ../repo2 ../repo3
+
+      You can add "all":
+
+      $ manifestly create --add=all
 
       $ manifestly create --based_on=existing.manifest --remove=repo1 --save_as=new.manifest
 
