@@ -33,19 +33,19 @@ To create a new manifest, run
 
 Both `create` and `apply` take a `--search-paths` option to specify where the repositories of interest can be found.  The default search path is the current directory.
 
-`create` will then show you a blank manifest and give you options to add or remove repositories, or to choose the manifest commit for an existing repository.  When repositories are added, their latest commit is listed.  All commits seen during manifest creation are local commits only -- this tool does not look up remote commits.
+`create` by default is non-interactive (see `$>manifestly help create`) but there is an interactive option that will show you a blank manifest and give you options to add or remove repositories, or to choose the manifest commit for an existing repository.  When repositories are added, their latest commit is listed.  All commits seen during manifest creation are local commits only -- this tool does not look up remote commits.
 
 ### push
 
 To push a manifest file you have created, call:
 
-    $ manifestly push --local=my_file.manifest --mfrepo=myorg/myrepo --remote=foo
+    $ manifestly upload --local=my_file.manifest --mfrepo=myorg/myrepo --remote=foo
 
 This will take your local file and push it as the latest commit on top of the `foo` file at github.com/myorg/myrepo.
 
-### pull
+### download
 
-To pull a manifest file... instructions TBD, see built-in help.
+To download a manifest file... see built-in help (`$>manifestly help download`)
 
 ### apply
 
