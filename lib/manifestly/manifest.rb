@@ -11,6 +11,10 @@ module Manifestly
       @items.push(Manifestly::ManifestItem.new(repository))
     end
 
+    def remove_repository(repository)
+      @items.reject!{|item| item.repository.display_name == repository.display_name}
+    end
+
     def add_item(manifest_item)
       @items.push(manifest_item)
     end
@@ -40,9 +44,7 @@ module Manifestly
 
     def write(filename)
       File.open(filename, 'w') do |file|
-        @items.sort_by! do |item|
-          item[:repository_name]
-        end
+        @items.sort_by!(&:repository_name)
         @items.each do |item|
           file.write(item.to_file_string + "\n")
         end

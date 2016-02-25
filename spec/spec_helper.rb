@@ -1,5 +1,6 @@
 $LOAD_PATH.unshift File.expand_path('../../lib', __FILE__)
 require 'manifestly'
+require 'byebug'
 
 def absolutize_gem_path(path)
   File.join(File.dirname(__FILE__), '..', path)
