@@ -21,7 +21,6 @@ class Scenarios
 
       scenario = "cd #{@dir}\n" + scenario
       scenario = ERB.new(scenario).result(binding())
-      # scenario = scenario.split("\n").collect{|line| line.starts_with?("git ") ? "#{line} &> /dev/null" : line}.join("\n")
 
       suppress_output { system scenario }
 

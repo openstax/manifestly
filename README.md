@@ -35,7 +35,7 @@ Both `create` and `apply` take a `--search-paths` option to specify where the re
 
 `create` by default is non-interactive (see `$>manifestly help create`) but there is an interactive option that will show you a blank manifest and give you options to add or remove repositories, or to choose the manifest commit for an existing repository.  When repositories are added, their latest commit is listed.  All commits seen during manifest creation are local commits only -- this tool does not look up remote commits.
 
-### push
+### upload
 
 To push a manifest file you have created, call:
 
@@ -56,6 +56,18 @@ To apply a manifest file to your local repositories... instructions TBD, see bui
 ### list
 
 To list available manifest files... instructions TBD, see built-in help
+
+### tag
+
+You can add a tag to a manifest.  The same tag can be added multiple times (under the covers, Manifestly adds some unique characters to the tag you provide).
+
+See `$> manifestly help tag`.
+
+### find
+
+You can retrieve manifest SHAs for tags you've added.
+
+See `$> manifestly help find`.
 
 ## Development
 

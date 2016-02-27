@@ -162,7 +162,7 @@ module Manifestly
 
       (r)eturn - entering 'r' returns to the previous menu
 
-      Examples:
+      #{Rainbow("Examples:").bright}
 
       $ manifestly create -i\x5
       Create manifest from scratch with the default search path
@@ -293,7 +293,20 @@ module Manifestly
       present_list_menu(commits, show_author: true)
     end
 
-    desc "tag", ""
+    desc "tag", "Add a tag to a manifest"
+    long_desc <<-DESC
+      Add a tag (with optional message) to a manifest as identified by its SHA.
+
+      Tags are not currently ever removed from manifests, but the `find` command
+      has an option to only return info for the latest tag.
+
+      When you run this command, the tag is immediately pushed to the upstream
+      manifest repository.
+
+      #{Rainbow("Examples:").bright}
+
+      $> manifestly tag --repo=org/repo --sha=fe10b5fdb9 --tag=release-to-qa --message="howdy"
+    DESC
     repo_option
     method_option :sha,
                   desc: "The commit SHA of the manifest on the remote repository",
@@ -331,13 +344,13 @@ module Manifestly
       You can limit the number of returned SHAs with the `--limit` flag.
       Otherwise, all matching SHAs are returned.
 
-      Examples:
+      #{Rainbow("Examples:").bright}
 
-      $> manifestly find --tag=release-to-qa --repo=org/some_repo --repo_file=foo
-      fe10b5fdb9e2559a7b7f9268e9f3b9cff840f5cb
-      9fc60bee7cc80ce85ad2c066bf251be44f8ad8f1
+      $> manifestly find --tag=release-to-qa --repo=org/some_repo --repo_file=foo\x5
+      fe10b5fdb9e2559a7b7f9268e9f3b9cff840f5cb\x5
+      9fc60bee7cc80ce85ad2c066bf251be44f8ad8f1\x5
 
-      $> manifestly find --tag=release-to-qa --repo=org/some_repo --repo_file=foo --limit=1
+      $> manifestly find --tag=release-to-qa --repo=org/some_repo --repo_file=foo --limit=1\x5
       fe10b5fdb9e2559a7b7f9268e9f3b9cff840f5cb
     DESC
     repo_option
@@ -355,7 +368,7 @@ module Manifestly
     def find
       repository = Repository.load_cached(options[:repo], update: true)
       shas = repository.get_shas_with_tag(tag: options[:tag], file: options[:repo_file])
-      options[:limit] ? shas.take(options[:limit]) : shas
+      options[:limit] ? shas.take(options[:limit].to_i) : shas
     end
 
     protected
