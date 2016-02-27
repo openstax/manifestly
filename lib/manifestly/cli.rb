@@ -98,17 +98,17 @@ module Manifestly
 
       --add: a space-separated list of repository paths to add, can be relative or
       absolute path names; if relative, manifestly tries to find them based on the
-      --search_paths option. The special all option adds all available repos.
+      --search-paths option. The special all option adds all available repos.
 
       --remove: a space-separated list of repository paths to remove, only useful
-      if you've also passed a --based_on manifest as a starting point.
+      if you've also passed a --based-on manifest as a starting point.
 
-      --save_as: lets you provide a name for the created manifest, otherwise defaults
+      --save-as: lets you provide a name for the created manifest, otherwise defaults
       to a timestamp name with a random hex hash
 
       Examples:
 
-      $ manifestly create --search_paths=.. --add=repo1 repo2 repo3
+      $ manifestly create --search-paths=.. --add=repo1 repo2 repo3
 
       The above is the same as:
 
@@ -118,7 +118,7 @@ module Manifestly
 
       $ manifestly create --add=all
 
-      $ manifestly create --based_on=existing.manifest --remove=repo1 --save_as=new.manifest
+      $ manifestly create --based-on=existing.manifest --remove=repo1 --save-as=new.manifest
 
       INTERACTIVE CREATION
 
@@ -167,10 +167,10 @@ module Manifestly
       $ manifestly create -i\x5
       Create manifest from scratch with the default search path
 
-      $ manifestly create -i --search_paths=..\x5
+      $ manifestly create -i --search-paths=..\x5
       Create manifest looking for repositories one dir up
 
-      $ manifestly create -i --based_on=~my.manifest --search_paths=~jim/repos\x5
+      $ manifestly create -i --based-on=~my.manifest --search-paths=~jim/repos\x5
       Create manifest starting from an existing one
     DESC
     def create
@@ -346,11 +346,11 @@ module Manifestly
 
       #{Rainbow("Examples:").bright}
 
-      $> manifestly find --tag=release-to-qa --repo=org/some_repo --repo_file=foo\x5
+      $> manifestly find --tag=release-to-qa --repo=org/some_repo --repo-file=foo\x5
       fe10b5fdb9e2559a7b7f9268e9f3b9cff840f5cb\x5
       9fc60bee7cc80ce85ad2c066bf251be44f8ad8f1\x5
 
-      $> manifestly find --tag=release-to-qa --repo=org/some_repo --repo_file=foo --limit=1\x5
+      $> manifestly find --tag=release-to-qa --repo=org/some_repo --repo-file=foo --limit=1\x5
       fe10b5fdb9e2559a7b7f9268e9f3b9cff840f5cb
     DESC
     repo_option
@@ -512,7 +512,7 @@ module Manifestly
         Manifest.read(file, available_repositories)
       rescue Manifestly::ManifestItem::RepositoryNotFound
         say "Couldn't find all the repositories listed in #{file}.  " +
-            "Might need to specify --search_paths."
+            "Might need to specify --search-paths."
         nil
       end
     end

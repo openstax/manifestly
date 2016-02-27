@@ -25,6 +25,8 @@ Manifestly has built in help:
 
     $ manifestly help
 
+_Note_: underscores and hyphens are interchangeable in option names, e.g. `--search_paths=blah` is the same as `--search-paths=blah`.
+
 ### create
 
 To create a new manifest, run
