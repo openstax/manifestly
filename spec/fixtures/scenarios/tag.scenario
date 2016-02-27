@@ -1,0 +1,5 @@
+cd <%= @dir %>
+
+mkdir remotes
+
+cp -r <%= @fixtures_dir %>/manifest_repos/manifest_repo_1 remotes

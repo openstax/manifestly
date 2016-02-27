@@ -293,6 +293,71 @@ module Manifestly
       present_list_menu(commits, show_author: true)
     end
 
+    desc "tag", ""
+    repo_option
+    method_option :sha,
+                  desc: "The commit SHA of the manifest on the remote repository",
+                  type: :string,
+                  banner: '',
+                  required: true
+    method_option :tag,
+                  desc: "The value of the tag",
+                  type: :string,
+                  banner: '',
+                  required: true
+    method_option :message,
+                  desc: "An optional message on the tag",
+                  type: :string,
+                  banner: '',
+                  required: false
+    def tag
+      repository = Repository.load_cached(options[:repo], update: true)
+      repository.tag_scoped_to_file(
+        tag: options[:tag], sha: options[:sha], message: options[:message], push: true
+      )
+    end
+
+    desc "find", "Finds tagged manifest SHAs"
+    long_desc <<-DESC
+      Returns a list of manifest SHAs that have the specified tag on the
+      specified repository file.
+
+      SHAs are sorted in order of descending tag timestamp.  Note that these
+      timestamps are unavoidably linked to the time on the machine doing the
+      tagging, so it is possible to have unintended orderings if tagging machine
+      times are inaccurate or if tags are created at near simultaneous times
+      on multiple machines.  Time zones of those machines do not matter.
+
+      You can limit the number of returned SHAs with the `--limit` flag.
+      Otherwise, all matching SHAs are returned.
+
+      Examples:
+
+      $> manifestly find --tag=release-to-qa --repo=org/some_repo --repo_file=foo
+      fe10b5fdb9e2559a7b7f9268e9f3b9cff840f5cb
+      9fc60bee7cc80ce85ad2c066bf251be44f8ad8f1
+
+      $> manifestly find --tag=release-to-qa --repo=org/some_repo --repo_file=foo --limit=1
+      fe10b5fdb9e2559a7b7f9268e9f3b9cff840f5cb
+    DESC
+    repo_option
+    repo_file_option("The name of the manifest to look for tags on")
+    method_option :tag,
+                  desc: "The value of the tag",
+                  type: :string,
+                  banner: '',
+                  required: true
+    method_option :limit,
+                  desc: "The number of results to return",
+                  type: :string,
+                  banner: '',
+                  required: false
+    def find
+      repository = Repository.load_cached(options[:repo], update: true)
+      shas = repository.get_shas_with_tag(tag: options[:tag], file: options[:repo_file])
+      options[:limit] ? shas.take(options[:limit]) : shas
+    end
+
     protected
 
     def present_create_menu(manifest)

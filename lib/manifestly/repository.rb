@@ -1,4 +1,5 @@
 require 'fileutils'
+require 'ostruct'
 
 module Manifestly
   class Repository
@@ -7,6 +8,8 @@ module Manifestly
     class ManifestUnchanged < StandardError; end
     class CommitContentError < StandardError; end
     class NoCommitsError < StandardError; end
+    # class TagNotFound < StandardError; end
+    class TagShaNotFound < StandardError; end
 
     # Returns an object if can load a git repository at the specified path,
     # otherwise nil
@@ -17,24 +20,30 @@ module Manifestly
 
     # Loads a gem-cached copy of the specified repository, cloning it if
     # necessary.
-    def self.load_cached(github_name, options)
+    def self.load_cached(github_name_or_path, options)
       options[:update] ||= false
 
-      raise(IllegalArgument, "Repository name is blank.") if github_name.blank?
+      raise(IllegalArgument, "Repository name is blank.") if github_name_or_path.blank?
 
-      path = "./.manifestly/.manifest_repositories/#{github_name}"
-      FileUtils.mkdir_p(path)
+      cached_path = "#{Manifestly.configuration.cached_repos_root_dir}/.manifestly/.manifest_repositories/#{github_name_or_path}"
+      FileUtils.mkdir_p(cached_path)
 
-      repository = load(path)
+      repository = load(cached_path)
 
       if repository.nil?
-        url = "git@github.com:#{github_name}.git"
-        Git.clone(url, path)
-        repository = new(path)
+        remote_location = is_github_name?(github_name_or_path) ?
+                            "git@github.com:#{github_name_or_path}.git" :
+                            github_name_or_path
+        Git.clone(remote_location, cached_path)
+        repository = new(cached_path)
       end
 
       repository.make_like_just_cloned! if options[:update]
       repository
+    end
+
+    def self.is_github_name?(value)
+      value.match(/\A[^\/]+\/[^\/]+\z/)
     end
 
     def is_git_repository?
@@ -96,13 +105,21 @@ module Manifestly
     end
 
     def get_commit_content(sha)
-      diff_string = find_commit("#{sha}^").diff(sha).to_s
+      get_commit_file(sha).to_content
+    end
+
+    def get_commit_filename(sha)
+      get_commit_file(sha).to_name
+    end
+
+    def get_commit_file(sha)
+      diff_string = git.show(sha)
       sha_diff = Diff.new(diff_string)
 
       raise(CommitContentError, "No content to retrieve for SHA #{sha}!") if sha_diff.num_files == 0
       raise(CommitContentError, "More than one file in the commit for SHA #{sha}!") if sha_diff.num_files > 1
 
-      sha_diff[0].to_content
+      sha_diff[0]
     end
 
     def file_commits(file)
@@ -126,6 +143,36 @@ module Manifestly
       find_commit(sha)
     end
 
+    def tag_scoped_to_file(options={})
+      raise(IllegalArgument, "Tag names cannot contain forward slashes") if options[:tag].include?("/")
+
+      options[:push] ||= false
+      options[:message] ||= "no message"
+
+      filename = get_commit_filename(options[:sha])
+      tag = "#{Time.now.utc.strftime("%Y%m%d-%H%M%S.%6N")}/#{::SecureRandom.hex(2)}/#{filename}/#{options[:tag]}"
+      git.add_tag(tag, options[:sha], {annotate: true, message: options[:message], f: true})
+      git.push('origin', "refs/tags/#{tag}", f: true) if options[:push]
+    end
+
+    def get_shas_with_tag(options={})
+      options[:file] ||= ".*"
+      options[:order] ||= :descending
+
+      pattern = /.*\/#{options[:file]}\/#{options[:tag]}/
+
+      tag_objects = git.tags.select{|tag| tag.name.match(pattern)}
+                            .sort_by(&:name)
+
+      tag_objects.reverse! if options[:order] == :descending
+
+      tag_objects.collect do |tag_object|
+        matched_sha = tag_object.contents.match(/[a-f0-9]{40}/)
+        raise(TagShaNotFound, "Could not retrieve SHA for tag '#{full_tag}'") if matched_sha.nil?
+        matched_sha.to_s
+      end
+    end
+
     def toggle_prs_only
       @prs_only = !@prs_only
     end
@@ -134,7 +181,7 @@ module Manifestly
       @origin ||= git.remotes.select{|remote| remote.name == 'origin'}.first
     end
 
-    def github_name
+    def github_name_or_path
       # Extract 'org/reponame' out of remote url for both HTTP and SSH clones
       return nil if origin.nil?
       origin.url[/github.com.(.*?)(.git)?$/,1]
@@ -145,16 +192,16 @@ module Manifestly
     end
 
     def display_name
-      if github_name
-        repo_name = github_name.split('/').last
+      if github_name_or_path
+        repo_name = github_name_or_path.split('/').last
         dir_name = working_dir.to_s.split(File::SEPARATOR).last
         if repo_name == dir_name
-          github_name
+          github_name_or_path
         else
-          github_name + " (#{dir_name})"
+          github_name_or_path + " (#{dir_name})"
         end
       else
-        working_dir.to_s
+        working_dir.to_s.split('/').last
       end
     end
 

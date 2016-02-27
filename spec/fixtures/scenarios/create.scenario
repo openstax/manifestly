@@ -1,0 +1,8 @@
+mkdir remotes
+mkdir locals
+
+cp -r <%= @fixtures_dir %>/app_repos/app_repo_1 remotes
+cp -r <%= @fixtures_dir %>/app_repos/app_repo_2 remotes
+
+git clone remotes/app_repo_1 locals/app_repo_1 &> /dev/null
+git clone remotes/app_repo_2 locals/app_repo_2 &> /dev/null

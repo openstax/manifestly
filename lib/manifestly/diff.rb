@@ -49,6 +49,7 @@ module Manifestly
     def initialize(diff_string)
       file_strings = diff_string.split("diff --git ")
       file_strings.reject!(&:blank?)
+      file_strings.reject!{|str| str.starts_with?("commit ")} # from 'git show' output
       @files = file_strings.collect{|file_string| File.new(file_string)}
     end
 
