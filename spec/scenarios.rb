@@ -8,16 +8,16 @@ class Scenarios
     new.run(name, &block)
   end
 
-  def run(name, &block)
+  def run(name_or_options, &block)
     @dir = Dir.mktmpdir('manifestly-spec-')
     @fixtures_dir = absolutize_gem_path("./spec/fixtures")
 
     begin
       Manifestly.configuration.cached_repos_root_dir = @dir
 
-      scenario = name.is_a?(Hash) ?
-                   name[:inline] :
-                   File.open(absolutize_gem_path("./spec/fixtures/scenarios/#{name}.scenario")).read
+      scenario = name_or_options.is_a?(Hash) ?
+                   name_or_options[:inline] :
+                   File.open(absolutize_gem_path("./spec/fixtures/scenarios/#{name_or_options}.scenario")).read
 
       scenario = "cd #{@dir}\n" + scenario
       scenario = ERB.new(scenario).result(binding())

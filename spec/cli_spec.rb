@@ -5,16 +5,34 @@ describe Manifestly::CLI do
   describe 'create' do
 
     it 'creates a manifest non-interactively' do
-      Scenarios.run('create') do |dirs|
+      Scenarios.run(inline: <<-SETUP
+          mkdir repos && cd repos
+          git init -q one
+          cd one
+          touch some_file
+          git add . && git commit -q -m "."
+          git rev-parse HEAD > ../../sha_0.txt
+          cd ..
+          git init -q two
+          cd two
+          touch other_file
+          git add . && git commit -q -m "."
+          git rev-parse HEAD > ../../sha_1.txt
+        SETUP
+      ) do |dirs|
+        shas = %w(sha_0 sha_1).collect do |sha|
+          File.open("#{dirs[:root]}/#{sha}.txt").read.chomp
+        end
+
         suppress_output do
-          Manifestly::CLI.start(%W[create --no-interactive --search_paths=#{dirs[:locals]} --add=all --save_as=#{dirs[:root]}/my.manifest])
+          Manifestly::CLI.start(%W[create --no-interactive --search_paths=#{dirs[:root]}/repos --add=all --save_as=#{dirs[:root]}/my.manifest])
         end
 
         manifest = File.open("#{dirs[:root]}/my.manifest").read
 
         expect(manifest).to eq(
-          "app_repo_1 @ baff0b6df2f5ae88df375c9e3787bf0f95632431\n" \
-          "app_repo_2 @ 2ef6871889268957db945fc7e63de553a5ff41d8\n"
+          "one @ #{shas[0]}\n" \
+          "two @ #{shas[1]}\n"
         )
       end
     end
