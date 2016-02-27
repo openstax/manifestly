@@ -4,6 +4,9 @@ rvm:
   - 2.2.3
 cache: bundler
 before_install: gem install bundler
+before_script:
+  - git config --global user.email "cyrus@redblock.com"
+  - git config --global user.name "Cyrus Redblock"
 branches:
   only:
     - master
