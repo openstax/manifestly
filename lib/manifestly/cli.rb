@@ -402,6 +402,13 @@ module Manifestly
       repository = Repository.load_cached(options[:repo], update: true)
       from_manifest = load_manifest(repository: repository, sha: options[:from_sha])
       to_manifest = load_manifest(repository: repository, sha: options[:to_sha])
+
+      if !from_manifest || !to_manifest
+        say("Could not load the 'from' manifest so cannot continue with the diff.") if !from_manifest
+        say("Could not load the 'to' manifest so cannot continue with the diff.") if !to_manifest
+        return
+      end
+
       manifest_diff = ManifestDiff.new(from_manifest, to_manifest)
       manifest_diff.to_markdown
     end
@@ -557,8 +564,8 @@ module Manifestly
           say "Missing arguments when trying to load manifest"
           nil
         end
-      rescue Manifestly::ManifestItem::RepositoryNotFound
-        say "Couldn't find all the repositories listed in the manifest.  " +
+      rescue Manifestly::ManifestItem::RepositoryNotFound => e
+        say "Couldn't find the #{e.message} repository listed in the manifest.  " +
             "Might need to specify --search-paths."
         nil
       end
