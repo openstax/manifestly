@@ -29,17 +29,17 @@ module Manifestly
       @items[index]
     end
 
-    def self.read(filename, repositories)
-      manifest = Manifest.new
-
+    def self.read_file(filename, repositories)
       File.open(filename, 'r') do |file|
-        file.each_line do |line|
-          item = ManifestItem.from_file_string(line, repositories)
-          manifest.add_item(item)
-        end
+        read_lines(file, repositories)
       end
+    end
 
-      manifest
+    def self.read_lines(lines, repositories)
+      lines.split("\n").each_with_object(Manifest.new) do |line, manifest|
+        item = ManifestItem.from_file_string(line, repositories)
+        manifest.add_item(item)
+      end
     end
 
     def write(filename)
@@ -60,6 +60,11 @@ module Manifestly
     def empty?
       items.empty?
     end
+
+    # Some meta info that some callers want to attach to the manifest
+    attr_accessor :manifest_repository
+    attr_accessor :manifest_sha
+    attr_accessor :manifest_file
 
   end
 end

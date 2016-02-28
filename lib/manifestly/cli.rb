@@ -175,7 +175,7 @@ module Manifestly
     DESC
     def create
       manifest = if options[:based_on]
-        read_manifest(options[:based_on]) || return
+        load_manifest(file: options[:based_on]) || return
       else
         Manifest.new
       end
@@ -205,7 +205,7 @@ module Manifestly
     DESC
     def apply
       begin
-        manifest = read_manifest(options[:file]) || return
+        manifest = load_manifest(file: options[:file]) || return
       rescue Manifestly::ManifestItem::MultipleSameNameRepositories => e
         say "Multiple repositories have the same name (#{e.message}) so we " +
             "can't apply the manifest. Try limiting the search_paths or " +
@@ -371,6 +371,27 @@ module Manifestly
       options[:limit] ? shas.take(options[:limit].to_i) : shas
     end
 
+    desc "diff", "Show PR commits between two manifests across its repos"
+    search_paths_option
+    repo_option
+    method_option :from_sha,
+                  desc: "The commit SHA of the manifest on the remote repository to diff from",
+                  type: :string,
+                  banner: '',
+                  required: true
+    method_option :to_sha,
+                  desc: "The commit SHA of the manifest on the remote repository to diff from",
+                  type: :string,
+                  banner: '',
+                  required: true
+    def diff
+      repository = Repository.load_cached(options[:repo], update: true)
+      from_manifest = load_manifest(repository: repository, sha: options[:from_sha])
+      to_manifest = load_manifest(repository: repository, sha: options[:to_sha])
+      manifest_diff = ManifestDiff.new(from_manifest, to_manifest)
+      manifest_diff.to_markdown
+    end
+
     protected
 
     def present_create_menu(manifest)
@@ -507,11 +528,23 @@ module Manifestly
       end
     end
 
-    def read_manifest(file)
+    def load_manifest(options={})
       begin
-        Manifest.read(file, available_repositories)
+        if options[:file]
+          Manifest.read_file(options[:file], available_repositories)
+        elsif options[:repository] && options[:sha]
+          content = options[:repository].get_commit_content(options[:sha])
+          Manifest.read_lines(content, available_repositories).tap do |manifest|
+            manifest.manifest_repository = options[:repository]
+            manifest.manifest_sha = options[:sha]
+            manifest.manifest_file = options[:repository].get_commit_filename(options[:sha])
+          end
+        else
+          say "Missing arguments when trying to load manifest"
+          nil
+        end
       rescue Manifestly::ManifestItem::RepositoryNotFound
-        say "Couldn't find all the repositories listed in #{file}.  " +
+        say "Couldn't find all the repositories listed in the manifest.  " +
             "Might need to specify --search-paths."
         nil
       end
@@ -619,19 +652,12 @@ module Manifestly
           row do
             column "#{index}", align: 'right'
             column "#{commit.sha[0..9]}"
-            column "#{summarize_commit_message(commit)}"
+            column "#{Commit.new(commit).summarized_message}"
             column "#{commit.author.name[0..13]}" if options[:show_author]
             column "#{commit.date}"
           end
         end
       end
-    end
-
-    def summarize_commit_message(commit)
-      commit.message
-        .gsub(/Merge pull request (#\w+)( from [\w-]+\/[\w-]+)/, 'PR \1')
-        .gsub("\n",' ')
-        .gsub(/\s+/, ' ')[0..79]
     end
 
     def repository_choices(except_in_manifest=nil)
