@@ -372,6 +372,20 @@ module Manifestly
     end
 
     desc "diff", "Show PR commits between two manifests across its repos"
+    long_desc <<-DESC
+      Runs a diff between two manifests (as identified by their commit SHAs) and
+      produces output (by default in markdown) that lists the PRs that were merged
+      between the manifests for each application repository listed in the "to"
+      manifest.
+
+      Up-to-date repositories are required wherever you are running manifestly,
+      and will need to be referenced with the normal --search-paths option (unless
+      they are in the default path).
+
+      #{Rainbow("Examples:").bright}
+
+      $> manifestly diff --repo=org/some_repo --from-sha=fe10b5fdb9e --to-sha=9fc60bee7c > changes.md
+    DESC
     search_paths_option
     repo_option
     method_option :from_sha,

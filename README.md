@@ -71,6 +71,12 @@ You can retrieve manifest SHAs for tags you've added.
 
 See `$> manifestly help find`.
 
+### diff
+
+You can diff two manifests, resulting in markdown output that lists the PRs merged between manifests for each application repository listed in the "to" manifest.
+
+See `$> manifestly help diff`.
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `bin/console` for an interactive prompt that will allow you to experiment.

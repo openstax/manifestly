@@ -24,7 +24,7 @@ module Manifestly
       def item_source_info
         new_item? ?
           " (new manifest entry)" :
-          " (#{from_sha[0..9]} to #{to_sha[0..9]})"
+          " (`#{from_sha[0..9]}` to `#{to_sha[0..9]}`)"
       end
 
       def new_item?
@@ -60,7 +60,7 @@ module Manifestly
               "1. #{entry}"
             end.join("\n")
 
-            is_rollback ? "These commits were *rolled back*:\n\n#{entries}" : entries
+            is_rollback ? "These commits were ***rolled back***:\n\n#{entries}" : entries
           end
         end
       end
@@ -90,7 +90,7 @@ module Manifestly
       to_sha = @to_manifest.manifest_sha
 
       if repository && file && from_sha && to_sha
-        "Comparing manifest *#{file}* on repository *#{repository.display_name}* from commit #{from_sha[0..9]} to #{to_sha[0..9]}."
+        "Comparing manifest ***#{file}*** on repository ***#{repository.display_name}*** from commit `#{from_sha[0..9]}` to `#{to_sha[0..9]}`."
       else
         "Manifest source info is *unknown*."
       end
