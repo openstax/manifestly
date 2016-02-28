@@ -1,6 +1,7 @@
 $LOAD_PATH.unshift File.expand_path('../../lib', __FILE__)
 require 'manifestly'
 require 'byebug'
+require 'scenarios'
 
 def absolutize_gem_path(path)
   File.join(File.dirname(__FILE__), '..', path)
@@ -18,5 +19,20 @@ RSpec.configure do |config|
     end
 
     result
+  end
+
+  def suppress_output
+    original_stderr = $stderr
+    original_stdout = $stdout
+
+    begin
+      $stderr = File.open(File::NULL, "w")
+      $stdout = File.open(File::NULL, "w")
+
+      yield
+    ensure
+      $stderr = original_stderr
+      $stdout = original_stdout
+    end
   end
 end

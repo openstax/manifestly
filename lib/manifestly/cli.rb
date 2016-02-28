@@ -98,17 +98,17 @@ module Manifestly
 
       --add: a space-separated list of repository paths to add, can be relative or
       absolute path names; if relative, manifestly tries to find them based on the
-      --search_paths option. The special all option adds all available repos.
+      --search-paths option. The special all option adds all available repos.
 
       --remove: a space-separated list of repository paths to remove, only useful
-      if you've also passed a --based_on manifest as a starting point.
+      if you've also passed a --based-on manifest as a starting point.
 
-      --save_as: lets you provide a name for the created manifest, otherwise defaults
+      --save-as: lets you provide a name for the created manifest, otherwise defaults
       to a timestamp name with a random hex hash
 
       Examples:
 
-      $ manifestly create --search_paths=.. --add=repo1 repo2 repo3
+      $ manifestly create --search-paths=.. --add=repo1 repo2 repo3
 
       The above is the same as:
 
@@ -118,7 +118,7 @@ module Manifestly
 
       $ manifestly create --add=all
 
-      $ manifestly create --based_on=existing.manifest --remove=repo1 --save_as=new.manifest
+      $ manifestly create --based-on=existing.manifest --remove=repo1 --save-as=new.manifest
 
       INTERACTIVE CREATION
 
@@ -162,15 +162,15 @@ module Manifestly
 
       (r)eturn - entering 'r' returns to the previous menu
 
-      Examples:
+      #{Rainbow("Examples:").bright}
 
       $ manifestly create -i\x5
       Create manifest from scratch with the default search path
 
-      $ manifestly create -i --search_paths=..\x5
+      $ manifestly create -i --search-paths=..\x5
       Create manifest looking for repositories one dir up
 
-      $ manifestly create -i --based_on=~my.manifest --search_paths=~jim/repos\x5
+      $ manifestly create -i --based-on=~my.manifest --search-paths=~jim/repos\x5
       Create manifest starting from an existing one
     DESC
     def create
@@ -291,6 +291,84 @@ module Manifestly
       repository = Repository.load_cached(options[:repo], update: true)
       commits = repository.file_commits(options[:repo_file])
       present_list_menu(commits, show_author: true)
+    end
+
+    desc "tag", "Add a tag to a manifest"
+    long_desc <<-DESC
+      Add a tag (with optional message) to a manifest as identified by its SHA.
+
+      Tags are not currently ever removed from manifests, but the `find` command
+      has an option to only return info for the latest tag.
+
+      When you run this command, the tag is immediately pushed to the upstream
+      manifest repository.
+
+      #{Rainbow("Examples:").bright}
+
+      $> manifestly tag --repo=org/repo --sha=fe10b5fdb9 --tag=release-to-qa --message="howdy"
+    DESC
+    repo_option
+    method_option :sha,
+                  desc: "The commit SHA of the manifest on the remote repository",
+                  type: :string,
+                  banner: '',
+                  required: true
+    method_option :tag,
+                  desc: "The value of the tag",
+                  type: :string,
+                  banner: '',
+                  required: true
+    method_option :message,
+                  desc: "An optional message on the tag",
+                  type: :string,
+                  banner: '',
+                  required: false
+    def tag
+      repository = Repository.load_cached(options[:repo], update: true)
+      repository.tag_scoped_to_file(
+        tag: options[:tag], sha: options[:sha], message: options[:message], push: true
+      )
+    end
+
+    desc "find", "Finds tagged manifest SHAs"
+    long_desc <<-DESC
+      Returns a list of manifest SHAs that have the specified tag on the
+      specified repository file.
+
+      SHAs are sorted in order of descending tag timestamp.  Note that these
+      timestamps are unavoidably linked to the time on the machine doing the
+      tagging, so it is possible to have unintended orderings if tagging machine
+      times are inaccurate or if tags are created at near simultaneous times
+      on multiple machines.  Time zones of those machines do not matter.
+
+      You can limit the number of returned SHAs with the `--limit` flag.
+      Otherwise, all matching SHAs are returned.
+
+      #{Rainbow("Examples:").bright}
+
+      $> manifestly find --tag=release-to-qa --repo=org/some_repo --repo-file=foo\x5
+      fe10b5fdb9e2559a7b7f9268e9f3b9cff840f5cb\x5
+      9fc60bee7cc80ce85ad2c066bf251be44f8ad8f1\x5
+
+      $> manifestly find --tag=release-to-qa --repo=org/some_repo --repo-file=foo --limit=1\x5
+      fe10b5fdb9e2559a7b7f9268e9f3b9cff840f5cb
+    DESC
+    repo_option
+    repo_file_option("The name of the manifest to look for tags on")
+    method_option :tag,
+                  desc: "The value of the tag",
+                  type: :string,
+                  banner: '',
+                  required: true
+    method_option :limit,
+                  desc: "The number of results to return",
+                  type: :string,
+                  banner: '',
+                  required: false
+    def find
+      repository = Repository.load_cached(options[:repo], update: true)
+      shas = repository.get_shas_with_tag(tag: options[:tag], file: options[:repo_file])
+      options[:limit] ? shas.take(options[:limit].to_i) : shas
     end
 
     protected
@@ -434,7 +512,7 @@ module Manifestly
         Manifest.read(file, available_repositories)
       rescue Manifestly::ManifestItem::RepositoryNotFound
         say "Couldn't find all the repositories listed in #{file}.  " +
-            "Might need to specify --search_paths."
+            "Might need to specify --search-paths."
         nil
       end
     end
