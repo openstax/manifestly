@@ -85,9 +85,10 @@ module Manifestly
       git.push
     end
 
-    def commits
+    def commits(options={})
       begin
-        log = git.log(1000000).object('origin/master') # don't limit
+        log = git.log(1000000).object('master') # don't limit
+        log = log.between(options[:between][0], options[:between][1]) if options[:between]
         log = log.grep("Merge pull request") if @prs_only
         log.tap(&:first) # tap to force otherwise lazy checks
       rescue Git::GitExecuteError => e

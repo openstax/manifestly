@@ -39,8 +39,7 @@ module Manifestly
       raise(InvalidManifestItem, string) if repo_name.blank? || sha.blank?
 
       matching_repositories = repositories.select do |repo|
-        repo.github_name      == repo_name ||
-        repo.working_dir.to_s == repo_name
+        repo.display_name == repo_name
       end
 
       raise(MultipleSameNameRepositories, repo_name) if matching_repositories.size > 1

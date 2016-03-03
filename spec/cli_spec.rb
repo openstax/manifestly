@@ -107,4 +107,50 @@ describe Manifestly::CLI do
 
   end
 
+  describe "#diff" do
+    it 'works' do
+      Scenarios.run(inline: <<-SETUP
+          git init -q one
+          fake_commit | repo:one | comment: A non-PR commit
+          fake_commit | repo:one | comment: A non-PR commit | sha:SHA1
+          fake_commit | repo:one | comment: Merge pull request #1 from org/branch1 Added import ability
+          fake_commit | repo:one | comment: Another commit
+          fake_commit | repo:one | comment: Merge pull request #2 from org/branch2 Added feature Y | sha:SHA5
+          git init -q two
+          fake_commit | repo:two | comment: Merge pull request #54 from org/blahdeblah Fixed bug blah | sha:SHA2
+          fake_commit | repo:two | comment: Some commit | sha:SHA3
+          git init -q three
+          fake_commit | repo:three | comment:Blah | sha:SHA4
+          git init -q four
+          fake_commit | repo:four | comment: Merge pull request #23 from org/yaya Added cookie ability | sha:SHA6
+          fake_commit | repo:four | comment: Another commit
+          fake_commit | repo:four | comment: Merge pull request #24 from org/howdy Added milkshakes
+          fake_commit | repo:four | comment: Merge pull request #25 from org/howdy Added feature WW | sha:SHA7
+          git init -q manifests
+          cd manifests
+          echo one @ "${SHA1}" >> foo
+          echo two @ "${SHA2}" >> foo
+          echo four @ "${SHA7}" >> foo
+          git add . && git commit -q -m "."
+          git rev-parse HEAD > ../manifest_0_sha.txt
+          echo one @ "${SHA5}" > foo
+          echo two @ "${SHA3}" >> foo
+          echo three @ "${SHA4}" >> foo
+          echo four @ "${SHA6}" >> foo
+          git add . && git commit -q -m "."
+          git rev-parse HEAD > ../manifest_1_sha.txt
+        SETUP
+      ) do |dirs|
+        manifest_shas = %w(0 1).collect do |sha|
+          File.open("#{dirs[:root]}/manifest_#{sha}_sha.txt").read.chomp
+        end
+
+        result = Manifestly::CLI.start(%W[diff --search_paths=#{dirs[:root]} --repo=#{dirs[:root]}/manifests --from_sha=#{manifest_shas[0]} --to_sha=#{manifest_shas[1]}])
+
+        expect(result).to match /Manifest Diff\n\n.*foo.*manifests.*\n\n## one.*\n\n.*PR #2 Added.*\n.*PR #1.*\n\n## two.*\n\n\* There.*\n\n## three.*\n\n\* This.*\n\n## four.*\n\n.*rolled back.*\n\n.*\[PR #25.*\n.*PR #24.*/
+      end
+
+    end
+  end
+
 end
