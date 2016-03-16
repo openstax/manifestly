@@ -11,13 +11,9 @@ Manifestly is run as a standalone executable.  Install with:
 
     $ gem install manifestly
 
-And then execute:
+To update to the latest version:
 
-    $ bundle
-
-Or install it yourself as:
-
-    $ gem install manifestly
+    $ gem update manifestly
 
 ## Usage
 
