@@ -1,3 +1,3 @@
 module Manifestly
-  VERSION = "2.1.0.beta01"
+  VERSION = "2.2.0"
 end
