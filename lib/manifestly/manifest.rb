@@ -30,9 +30,8 @@ module Manifestly
     end
 
     def self.read_file(filename, repositories)
-      File.open(filename, 'r') do |file|
-        read_lines(file, repositories)
-      end
+      lines = File.read(filename)
+      read_lines(lines, repositories)
     end
 
     def self.read_lines(lines, repositories)
