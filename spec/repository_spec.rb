@@ -70,6 +70,29 @@ describe Manifestly::Repository do
     end
   end
 
+  it 'should be able to fetch to find a commit whose checkout is requested' do
+    Scenarios.run(inline: <<-SETUP
+        git init -q remote
+        cd remote
+        touch file.txt
+        git add . && git commit -q -m "."
+        cd ..
+        git clone -q remote local
+        cd remote
+        touch new.txt
+        git add . && git commit -q -m "."
+        git rev-parse HEAD > ../sha.txt
+      SETUP
+    ) do |dirs|
+      sha = File.open("#{dirs[:root]}/sha.txt").read.chomp
+      local = Manifestly::Repository.load("#{dirs[:root]}/local")
+
+      expect{local.checkout_commit(sha)}.to raise_error(Manifestly::Repository::CommitNotPresent)
+
+      expect{local.checkout_commit(sha, true)}.not_to raise_error
+    end
+  end
+
   it 'should return ordered shas tag / file combinations' do
     Scenarios.run(inline: <<-SETUP
         git init -q repo

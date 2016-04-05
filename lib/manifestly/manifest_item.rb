@@ -26,8 +26,8 @@ module Manifestly
       @repository.fetch
     end
 
-    def checkout_commit!
-      @repository.checkout_commit(@commit.sha)
+    def checkout_commit!(fetch_if_unfound=false)
+      @repository.checkout_commit(@commit.sha, fetch_if_unfound)
     end
 
     def to_file_string

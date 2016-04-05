@@ -200,19 +200,32 @@ module Manifestly
     desc "apply", "Sets the manifest's repository's current states to the commits listed in the manifest"
     search_paths_option
     file_option("apply")
+    method_option :update,
+              desc: "Updates (fetches) repository content if a manifest commit is not found",
+              banner: '',
+              aliases: "-u",
+              type: :boolean,
+              default: false,
+              required: false
     long_desc <<-DESC
       Check to make sure the repositories you are deploying from have their state committed.
     DESC
     def apply
       begin
         manifest = load_manifest(file: options[:file]) || return
+        manifest.items.each{ |item| item.checkout_commit!(options[:update]) }
       rescue Manifestly::ManifestItem::MultipleSameNameRepositories => e
         say "Multiple repositories have the same name (#{e.message}) so we " +
             "can't apply the manifest. Try limiting the search_paths or " +
             "separate the duplicates."
         return
+      rescue Manifestly::Repository::CommitNotPresent => e
+        say "Could not find commit #{e.sha} in repository #{e.repository.github_name_or_path}. " +
+            "Try running again with the `--update` option."
+        return
       end
-      manifest.items.each(&:checkout_commit!)
+
+
     end
 
     desc "upload", "Upload a local manifest file to a manifest repository"

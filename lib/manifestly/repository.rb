@@ -4,7 +4,15 @@ require 'ostruct'
 module Manifestly
   class Repository
 
-    class CommitNotPresent < StandardError; end
+    class CommitNotPresent < StandardError
+      attr_reader :sha, :repository
+      def initialize(sha, repository)
+        @sha = sha
+        @repository = repository
+        super("SHA '#{sha}' not found in repository '#{repository.github_name_or_path}'")
+      end
+    end
+
     class ManifestUnchanged < StandardError; end
     class CommitContentError < StandardError; end
     class NoCommitsError < StandardError; end
@@ -101,7 +109,7 @@ module Manifestly
       begin
         git.gcommit(sha).tap(&:sha)
       rescue Git::GitExecuteError => e
-        raise CommitNotPresent, "SHA not found: #{sha}"
+        raise CommitNotPresent.new(sha, self)
       end
     end
 
@@ -131,8 +139,25 @@ module Manifestly
       end
     end
 
-    def checkout_commit(sha)
-      git.checkout(sha)
+    def checkout_commit(sha, fetch_if_unfound=false)
+      begin
+        git.checkout(sha)
+      rescue Git::GitExecuteError => e
+        if is_commit_not_found_exception?(e)
+          if fetch_if_unfound
+            git.fetch
+            checkout_commit(sha, false)
+          else
+            raise CommitNotPresent.new(sha, self)
+          end
+        else
+          raise
+        end
+      end
+    end
+
+    def is_commit_not_found_exception?(e)
+      e.message.include?("fatal: reference is not a tree")
     end
 
     def current_branch_name
