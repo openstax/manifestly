@@ -12,6 +12,12 @@ module Manifestly
     include CommandLineReporter
     include Manifestly::Ui
 
+    # https://github.com/erikhuda/thor/issues/244
+    # http://stackoverflow.com/a/18490048/1664216
+    def self.exit_on_failure?
+      true
+    end
+
     #
     # Common command line options
     #
@@ -175,7 +181,7 @@ module Manifestly
     DESC
     def create
       manifest = if options[:based_on]
-        load_manifest(file: options[:based_on]) || return
+        load_manifest(file: options[:based_on]) || error!
       else
         Manifest.new
       end
@@ -212,17 +218,17 @@ module Manifestly
     DESC
     def apply
       begin
-        manifest = load_manifest(file: options[:file]) || return
+        manifest = load_manifest(file: options[:file]) || error!
         manifest.items.each{ |item| item.checkout_commit!(options[:update]) }
       rescue Manifestly::ManifestItem::MultipleSameNameRepositories => e
         say "Multiple repositories have the same name (#{e.message}) so we " +
             "can't apply the manifest. Try limiting the search_paths or " +
             "separate the duplicates."
-        return
+        error!
       rescue Manifestly::Repository::CommitNotPresent => e
         say "Could not find commit #{e.sha} in repository #{e.repository.github_name_or_path}. " +
             "Try running again with the `--update` option."
-        return
+        error!
       end
 
 
@@ -276,7 +282,7 @@ module Manifestly
         repository.get_commit_content(options[:sha])
       rescue Manifestly::Repository::CommitNotPresent
         say('That SHA is invalid')
-        return
+        error!
       end
 
       save_as = options[:save_as]
@@ -419,7 +425,7 @@ module Manifestly
       if !from_manifest || !to_manifest
         say("Could not load the 'from' manifest so cannot continue with the diff.") if !from_manifest
         say("Could not load the 'to' manifest so cannot continue with the diff.") if !to_manifest
-        return
+        error!
       end
 
       manifest_diff = ManifestDiff.new(from_manifest, to_manifest)
@@ -756,6 +762,10 @@ module Manifestly
       end
 
       nil
+    end
+
+    def error!
+      exit 1
     end
 
   end

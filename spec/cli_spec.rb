@@ -4,6 +4,10 @@ describe Manifestly::CLI do
 
   describe 'create' do
 
+    it 'exits with non-zero status on errors' do
+      expect{Manifestly::CLI.start(%W[download])}.to raise_error SystemExit
+    end
+
     it 'creates a manifest non-interactively' do
       Scenarios.run(inline: <<-SETUP
           mkdir repos && cd repos
