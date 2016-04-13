@@ -122,7 +122,16 @@ module Manifestly
     end
 
     def get_commit_file(sha)
-      diff_string = git.show(sha)
+      diff_string = begin
+        git.show(sha)
+      rescue Git::GitExecuteError => e
+        if is_commit_not_found_exception?(e)
+          raise CommitNotPresent.new(sha, self)
+        else
+          raise
+        end
+      end
+
       sha_diff = Diff.new(diff_string)
 
       raise(CommitContentError, "No content to retrieve for SHA #{sha}!") if sha_diff.num_files == 0
@@ -157,7 +166,8 @@ module Manifestly
     end
 
     def is_commit_not_found_exception?(e)
-      e.message.include?("fatal: reference is not a tree")
+      e.message.include?("fatal: reference is not a tree") ||
+      e.message.include?("fatal: ambiguous argument")
     end
 
     def current_branch_name
