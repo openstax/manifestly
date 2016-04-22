@@ -88,7 +88,7 @@ module Manifestly
       full_repository_file_path = File.join(@path, repository_file_path)
       FileUtils.cp(local_file_path, full_repository_file_path)
       git.add(repository_file_path)
-      raise ManifestUnchanged if git.status.changed.empty?
+      raise ManifestUnchanged if git.status.changed.empty? && git.status.added.empty?
       git.commit(message)
       git.push
     end
