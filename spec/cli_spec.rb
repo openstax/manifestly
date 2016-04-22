@@ -43,6 +43,86 @@ describe Manifestly::CLI do
 
   end
 
+  describe "upload" do
+
+    it "uploads and returns the SHA" do
+      Scenarios.run(inline: <<-SETUP
+          git init -q remote
+          cd remote
+          touch file.txt
+          git add . && git commit -q -m "."
+          cd ..
+          git clone --bare -l remote remote.git
+          rm -rf remote
+          git clone -q remote.git local
+          touch another_file.txt
+          echo blah > another_file.txt
+        SETUP
+      ) do |dirs|
+
+        manifest_sha = capture(:stdout) {
+          Manifestly::CLI.start(%W[upload --file=#{dirs[:root]}/another_file.txt --repo=#{dirs[:root]}/remote.git --repo-file=file.txt --message=howdy])
+        }
+        expect(`cd #{dirs[:root]}/remote.git\n git show HEAD:file.txt`).to eq "blah\n"
+        expect(`cd #{dirs[:root]}/remote.git\n git show`).to match /commit #{manifest_sha}/
+      end
+    end
+
+    it "can upload to a non-existing repo file" do
+      Scenarios.run(inline: <<-SETUP
+          git init -q remote
+          cd remote
+          touch file.txt
+          git add . && git commit -q -m "."
+          cd ..
+          git clone --bare -l remote remote.git
+          rm -rf remote
+          git clone -q remote.git local
+          touch another_file.txt
+          echo blah > another_file.txt
+        SETUP
+      ) do |dirs|
+
+        manifest_sha = capture(:stdout) {
+          Manifestly::CLI.start(%W[upload --file=#{dirs[:root]}/another_file.txt --repo=#{dirs[:root]}/remote.git --repo-file=new_remote_file --message=howdy])
+        }
+
+        expect(manifest_sha.strip).to match /[0-9a-f]{40}/
+      end
+    end
+
+    it "can report a SHA when a manifest being uploaded hasn't changed" do
+      Scenarios.run(inline: <<-SETUP
+          git init -q remote
+          cd remote
+          touch file.txt
+          git add . && git commit -q -m "."
+          cd ..
+          git clone --bare -l remote remote.git
+          rm -rf remote
+          git clone -q remote.git local
+          touch another_file.txt
+          echo blah > another_file.txt
+        SETUP
+      ) do |dirs|
+
+        manifest_sha = capture(:stdout) {
+          Manifestly::CLI.start(%W[upload --file=#{dirs[:root]}/another_file.txt --repo=#{dirs[:root]}/remote.git --repo-file=file.txt --message=howdy])
+        }
+
+        expect(manifest_sha.strip).to match /[0-9a-f]{40}/
+
+
+        manifest_sha_2 = capture(:stdout) {
+          Manifestly::CLI.start(%W[upload --file=#{dirs[:root]}/another_file.txt --repo=#{dirs[:root]}/remote.git --repo-file=file.txt --message=howdy])
+        }
+
+        expect(manifest_sha_2).to eq manifest_sha
+      end
+    end
+
+  end
+
   describe '#tag and #find' do
 
     it 'adds and finds tags on a manifest repository' do
@@ -154,6 +234,37 @@ describe Manifestly::CLI do
         expect(result).to match /Manifest Diff\n\n.*foo.*manifests.*\n\n## one.*\n\n.*PR #2 Added.*\n.*PR #1.*\n\n## two.*\n\n\* There.*\n\n## three.*\n\n\* This.*\n\n## four.*\n\n.*rolled back.*\n\n.*\[PR #25.*\n.*PR #24.*/
       end
 
+    end
+  end
+
+  describe "upload, tag, and find" do
+    it "uploads and returns the SHA" do
+      Scenarios.run(inline: <<-SETUP
+          git init -q remote
+          cd remote
+          touch file.txt
+          git add . && git commit -q -m "."
+          cd ..
+          git clone --bare -l remote remote.git
+          rm -rf remote
+          git clone -q remote.git local
+          touch another_file.txt
+          echo blah > another_file.txt
+        SETUP
+      ) do |dirs|
+
+        manifest_sha = capture(:stdout) {
+          Manifestly::CLI.start(%W[upload --file=#{dirs[:root]}/another_file.txt --repo=#{dirs[:root]}/remote.git --repo-file=foo.manifest --message=howdy])
+        }
+
+        suppress_output do
+          Manifestly::CLI.start(%W[tag --repo=#{dirs[:root]}/remote.git --sha=#{manifest_sha} --tag=release-to-qa --message="hi\ there"])
+        end
+
+        expect(
+          Manifestly::CLI.start(%W[find --repo=#{dirs[:root]}/remote.git --repo_file=foo.manifest --tag=release-to-qa])
+        ).to eq [manifest_sha.strip]
+      end
     end
   end
 

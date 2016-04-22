@@ -234,7 +234,7 @@ module Manifestly
 
     end
 
-    desc "upload", "Upload a local manifest file to a manifest repository"
+    desc "upload", "Upload a local manifest file to a manifest repository and print its SHA"
     file_option("upload")
     repo_option
     repo_file_option("The name of the manifest to upload to in the repository, with path if applicable")
@@ -246,15 +246,16 @@ module Manifestly
     long_desc <<-DESC
       Upload a manifest when you want to share it with others or persist it
       permanently.  Since manifests are stored remotely as versions of a file
-      in git, it cannot be changed once uploaded.
+      in git, it cannot be changed once uploaded.  Prints out the manifest SHA.
     DESC
     def upload
       repository = Repository.load_cached(options[:repo], update: true)
 
       begin
         repository.push_file!(options[:file], options[:repo_file], options[:message])
-      rescue Manifestly::Repository::ManifestUnchanged => e
-        say "The manifest you requested to push is already the latest and so could not be pushed."
+      rescue Manifestly::Repository::ManifestUnchanged
+      ensure
+        say repository.current_commit
       end
     end
 

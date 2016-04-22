@@ -125,4 +125,27 @@ describe Manifestly::Repository do
     end
   end
 
+  it 'testing' do
+    # Need remote to be a bare repo to push to it http://stackoverflow.com/a/1784612/1664216
+    Scenarios.run(inline: <<-SETUP
+        git init -q remote
+        cd remote
+        touch file.txt
+        git add . && git commit -q -m "."
+        cd ..
+        git clone --bare -l remote remote.git
+        rm -rf remote
+        git clone -q remote.git local
+        touch another_file.txt
+        echo blah > another_file.txt
+      SETUP
+    ) do |dirs|
+      repo = Manifestly::Repository.load("#{dirs[:root]}/local")
+
+      repo.push_file!("#{dirs[:root]}/another_file.txt", "file.txt", "a message")
+
+      expect(`cd #{dirs[:root]}/remote.git\n git show HEAD:file.txt`).to eq "blah\n"
+    end
+  end
+
 end
