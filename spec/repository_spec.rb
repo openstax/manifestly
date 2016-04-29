@@ -133,7 +133,7 @@ describe Manifestly::Repository do
         touch file.txt
         git add . && git commit -q -m "."
         cd ..
-        git clone --bare -l remote remote.git
+        git clone -q --bare -l remote remote.git
         rm -rf remote
         git clone -q remote.git local
         touch another_file.txt

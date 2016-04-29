@@ -2,10 +2,100 @@ require 'spec_helper'
 
 describe Manifestly::CLI do
 
+  describe 'apply' do
+
+    it 'applies when no update needed' do
+      Scenarios.run(inline: <<-SETUP
+          mkdir repos && cd repos
+          git init -q one
+          cd one
+          touch some_file
+          git add . && git commit -q -m "."
+          git rev-parse HEAD > ../../sha_0.txt
+          echo "one @ `git rev-parse HEAD`" > ../../my.manifest
+          echo blah > some_file
+          git add . && git commit -q -m "."
+          git rev-parse HEAD > ../../sha_1.txt
+        SETUP
+      ) do | dirs|
+
+        shas = %w(sha_0 sha_1).collect do |sha|
+          File.open("#{dirs[:root]}/#{sha}.txt").read.chomp
+        end
+
+        # Repo "one" is at latest SHA
+        expect(`cd #{dirs[:root]}/repos/one\n git rev-parse HEAD`.chomp).to eq shas[1]
+
+        suppress_output do
+          Manifestly::CLI.start(%W[apply --search_paths=#{dirs[:root]}/repos --file=#{dirs[:root]}/my.manifest])
+        end
+
+        # After applying manifest, repo "one" is at the earlier SHA
+        expect(`cd #{dirs[:root]}/repos/one\n git rev-parse HEAD`.chomp).to eq shas[0]
+      end
+    end
+
+    context "when local repository is out of date" do
+      around(:each) do |example|
+        Scenarios.run(inline: <<-SETUP
+            mkdir remote && mkdir local
+
+            cd remote
+            git init -q one
+            fake_commit | repo:one | comment: first commit| sha:SHA0
+
+            cd ../local
+            git clone -q ../remote/one
+
+            cd ../remote
+            fake_commit | repo:one | comment: second commit not in local | sha:SHA1
+
+            cd ..
+            echo "${SHA0}" > sha_0.txt
+            echo "${SHA1}" > sha_1.txt
+            echo one @ "${SHA1}" >> my.manifest
+          SETUP
+        ) do |dirs|
+          @shas = %w(sha_0 sha_1).collect do |sha|
+            File.open("#{dirs[:root]}/#{sha}.txt").read.chomp
+          end
+          @dirs = dirs
+
+          example.run
+        end
+      end
+
+      it "works if --update specified" do
+        # Repo "one" is at latest SHA
+        expect(`cd #{@dirs[:root]}/local/one\n git rev-parse HEAD`.chomp).to eq @shas[0]
+
+        suppress_output do
+          Manifestly::CLI.start(%W[apply --update --search_paths=#{@dirs[:root]}/local --file=#{@dirs[:root]}/my.manifest])
+        end
+
+        # After applying manifest, repo "one" is at the earlier SHA
+        expect(`cd #{@dirs[:root]}/local/one\n git rev-parse HEAD`.chomp).to eq @shas[1]
+      end
+
+      it "errors if --update is not specified" do
+        # Repo "one" is at latest SHA
+        expect(`cd #{@dirs[:root]}/local/one\n git rev-parse HEAD`.chomp).to eq @shas[0]
+
+        expect{
+          Manifestly::CLI.start(%W[apply --search_paths=#{@dirs[:root]}/local --file=#{@dirs[:root]}/my.manifest])
+        }.to exit_with_message(/Try running again with the `--update` option./)
+
+        # SHA unchanged
+        expect(`cd #{@dirs[:root]}/local/one\n git rev-parse HEAD`.chomp).to eq @shas[0]
+      end
+    end
+
+  end
+
   describe 'create' do
 
     it 'exits with non-zero status on errors' do
-      expect{Manifestly::CLI.start(%W[download])}.to raise_error SystemExit
+      expect{ Manifestly::CLI.start(%W[download]) }.to exit_with_message(/No value provided for required options/)
     end
 
     it 'creates a manifest non-interactively' do
@@ -52,7 +142,7 @@ describe Manifestly::CLI do
           touch file.txt
           git add . && git commit -q -m "."
           cd ..
-          git clone --bare -l remote remote.git
+          git clone -q --bare -l remote remote.git
           rm -rf remote
           git clone -q remote.git local
           touch another_file.txt
@@ -75,7 +165,7 @@ describe Manifestly::CLI do
           touch file.txt
           git add . && git commit -q -m "."
           cd ..
-          git clone --bare -l remote remote.git
+          git clone -q --bare -l remote remote.git
           rm -rf remote
           git clone -q remote.git local
           touch another_file.txt
@@ -98,7 +188,7 @@ describe Manifestly::CLI do
           touch file.txt
           git add . && git commit -q -m "."
           cd ..
-          git clone --bare -l remote remote.git
+          git clone -q --bare -l remote remote.git
           rm -rf remote
           git clone -q remote.git local
           touch another_file.txt
@@ -245,7 +335,7 @@ describe Manifestly::CLI do
           touch file.txt
           git add . && git commit -q -m "."
           cd ..
-          git clone --bare -l remote remote.git
+          git clone -q --bare -l remote remote.git
           rm -rf remote
           git clone -q remote.git local
           touch another_file.txt
