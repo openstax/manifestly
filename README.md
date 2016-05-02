@@ -15,6 +15,18 @@ To update to the latest version:
 
     $ gem update manifestly
 
+## What is a manifest?
+
+A manifest is simple: just a file listing off repositories at specified commits, e.g.:
+
+```
+my_github_org/application_1 @ fb186400247779f90aacf23fa2cde044cbac387c
+my_github_org/application_2 @ c4eb68d6b16f61af04dd0e02df2249382d411104
+```
+
+When you have deploys that span multiple applications, a manifest lets you identify exactly what is deployed for each app.
+This tool, Manifestly, helps you create, find, and use these manifests in your deploy infrastructure.
+
 ## Usage
 
 Manifestly has built in help:
@@ -72,6 +84,10 @@ See `$> manifestly help find`.
 You can diff two manifests, resulting in markdown output that lists the PRs merged between manifests for each application repository listed in the "to" manifest.
 
 See `$> manifestly help diff`.
+
+## Miscellaneous
+
+1. You can add comments to manifests using a `# comment here` style.  Blank lines and leading and trailing whitespace are ignored in manifests.
 
 ## Development
 

@@ -30,14 +30,26 @@ module Manifestly
     end
 
     def self.read_file(filename, repositories)
-      lines = File.read(filename)
-      read_lines(lines, repositories)
+      content = File.read(filename)
+      read_string(content, repositories)
     end
 
-    def self.read_lines(lines, repositories)
-      lines.split("\n").each_with_object(Manifest.new) do |line, manifest|
+    def self.read_string(string, repositories)
+      lines = get_lines_from_string(string)
+
+      lines.each_with_object(Manifest.new) do |line, manifest|
         item = ManifestItem.from_file_string(line, repositories)
         manifest.add_item(item)
+      end
+    end
+
+    def self.get_lines_from_string(line_string)
+      all_lines = line_string.split("\n")
+
+      all_lines.each_with_object([]) do |line, lines|
+        line.gsub!(/#.*/,'')
+        line.strip!
+        lines.push(line) if line != ''
       end
     end
 

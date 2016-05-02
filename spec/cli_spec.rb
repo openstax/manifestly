@@ -53,7 +53,7 @@ describe Manifestly::CLI do
             cd ..
             echo "${SHA0}" > sha_0.txt
             echo "${SHA1}" > sha_1.txt
-            echo one @ "${SHA1}" >> my.manifest
+            echo one @ "${SHA1}" \\# test comment ability >> my.manifest
           SETUP
         ) do |dirs|
           @shas = %w(sha_0 sha_1).collect do |sha|

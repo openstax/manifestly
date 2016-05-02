@@ -575,7 +575,7 @@ module Manifestly
           Manifest.read_file(options[:file], available_repositories)
         elsif options[:repository] && options[:sha]
           content = options[:repository].get_commit_content(options[:sha])
-          Manifest.read_lines(content, available_repositories).tap do |manifest|
+          Manifest.read_string(content, available_repositories).tap do |manifest|
             manifest.manifest_repository = options[:repository]
             manifest.manifest_sha = options[:sha]
             manifest.manifest_file = options[:repository].get_commit_filename(options[:sha])
