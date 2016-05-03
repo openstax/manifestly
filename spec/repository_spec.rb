@@ -101,7 +101,7 @@ describe Manifestly::Repository do
       @local.tag_scoped_to_file(tag: 'release-to-qa', sha: @sha, message: 'hi', push: true)
 
       expect{
-        @local.tag_scoped_to_file(tag: 'release-to-qa', sha: @sha, message: 'hi', push: true)
+        @local.tag_scoped_to_file(tag: 'release-to-qa', sha: @sha[0..7], message: 'hi', push: true)
       }.to raise_error(Manifestly::Repository::ShaAlreadyTagged)
 
       expect(@local.git.tags.count).to eq 1

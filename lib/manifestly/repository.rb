@@ -81,7 +81,7 @@ module Manifestly
 
     def make_like_just_cloned!
       git.branch('master').checkout
-      git.fetch
+      git.fetch('origin', :tags => true)
       git.reset_hard('origin/master')
     end
 
@@ -187,7 +187,7 @@ module Manifestly
       options[:message] ||= "no message"
 
       existing_shas = get_shas_with_tag(tag: options[:tag])
-      raise(ShaAlreadyTagged) if existing_shas.include?(options[:sha])
+      raise(ShaAlreadyTagged) if existing_shas.any?{|existing| existing.match(/#{options[:sha]}/)}
 
       filename = get_commit_filename(options[:sha])
       tag = "#{Time.now.utc.strftime("%Y%m%d-%H%M%S.%6N")}/#{::SecureRandom.hex(2)}/#{filename}/#{options[:tag]}"
