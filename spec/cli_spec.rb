@@ -240,9 +240,9 @@ describe Manifestly::CLI do
           Manifestly::CLI.start(%W[tag --repo=#{dirs[:root]}/remote --sha=#{shas[0]} --tag=release-to-qa --message="howdy"])
         end
 
-        expect(
+        expect(capture(:stdout) {
           Manifestly::CLI.start(%W[find --repo=#{dirs[:root]}/remote --repo_file=foo.manifest --tag=release-to-qa])
-        ).to eq [shas[0]]
+        }.chomp).to eq shas[0]
 
         # Test can filter based on different file
 
@@ -250,9 +250,9 @@ describe Manifestly::CLI do
           Manifestly::CLI.start(%W[tag --repo=#{dirs[:root]}/remote --sha=#{shas[1]} --tag=release-to-qa])
         end
 
-        expect(
+        expect(capture(:stdout) {
           Manifestly::CLI.start(%W[find --repo=#{dirs[:root]}/remote --repo_file=bar.manifest --tag=release-to-qa])
-        ).to eq [shas[1]]
+        }.chomp).to eq shas[1]
 
         suppress_output do
           Manifestly::CLI.start(%W[tag --repo=#{dirs[:root]}/remote --sha=#{shas[2]} --tag=release-to-qa])
@@ -260,17 +260,17 @@ describe Manifestly::CLI do
 
         # Test what happens when multiple of "same" tag on one file
 
-        expect(
+        expect(capture(:stdout) {
           Manifestly::CLI.start(%W[find --repo=#{dirs[:root]}/remote --repo_file=foo.manifest --tag=release-to-qa])
-        ).to eq [shas[2], shas[0]]
+        }.chomp).to eq [shas[2], shas[0]].join("\n")
 
-        expect(
+        expect(capture(:stdout) {
           Manifestly::CLI.start(%W[find --repo=#{dirs[:root]}/remote --repo_file=foo.manifest --tag=release-to-qa --limit=3])
-        ).to eq [shas[2], shas[0]]
+        }.chomp).to eq [shas[2], shas[0]].join("\n")
 
-        expect(
+        expect(capture(:stdout) {
           Manifestly::CLI.start(%W[find --repo=#{dirs[:root]}/remote --repo_file=foo.manifest --tag=release-to-qa --limit=1])
-        ).to eq [shas[2]]
+        }.chomp).to eq shas[2]
 
         # Check that tags made it to remote
 
@@ -352,8 +352,18 @@ describe Manifestly::CLI do
         end
 
         expect(
-          Manifestly::CLI.start(%W[find --repo=#{dirs[:root]}/remote.git --repo_file=foo.manifest --tag=release-to-qa])
-        ).to eq [manifest_sha.strip]
+          capture(:stdout) {
+            Manifestly::CLI.start(%W[find --repo=#{dirs[:root]}/remote.git --repo_file=foo.manifest --tag=release-to-qa])
+          }
+        ).to eq manifest_sha
+
+        # do it again to show that the duplicate tag doesn't stick (no error output and still just one tag)
+
+        expect(capture(:stdout) {
+          Manifestly::CLI.start(%W[tag --repo=#{dirs[:root]}/remote.git --sha=#{manifest_sha} --tag=release-to-qa --message="hi\ there"])
+        }).to eq ""
+
+        expect(Git.ls_remote("#{dirs[:root]}/remote.git")["tags"].keys.reject{|kk| kk.match(/.*\^\{\}/)}.count).to eq 1
       end
     end
   end

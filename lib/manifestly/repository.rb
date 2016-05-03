@@ -18,6 +18,7 @@ module Manifestly
     class NoCommitsError < StandardError; end
     # class TagNotFound < StandardError; end
     class TagShaNotFound < StandardError; end
+    class ShaAlreadyTagged < StandardError; end
 
     # Returns an object if can load a git repository at the specified path,
     # otherwise nil
@@ -184,6 +185,9 @@ module Manifestly
 
       options[:push] ||= false
       options[:message] ||= "no message"
+
+      existing_shas = get_shas_with_tag(tag: options[:tag])
+      raise(ShaAlreadyTagged) if existing_shas.include?(options[:sha])
 
       filename = get_commit_filename(options[:sha])
       tag = "#{Time.now.utc.strftime("%Y%m%d-%H%M%S.%6N")}/#{::SecureRandom.hex(2)}/#{filename}/#{options[:tag]}"
