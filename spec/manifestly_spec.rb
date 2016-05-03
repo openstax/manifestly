@@ -5,7 +5,7 @@ describe Manifestly do
     expect(Manifestly::VERSION).not_to be nil
   end
 
-  xit 'creates a manifest' do
+  xit 'creates a manifest interactively' do
     allow(Thor::LineEditor).to receive(:readline).and_return('a', '3', 'w', 'test.manifest')
 
     capture(:stdout) {

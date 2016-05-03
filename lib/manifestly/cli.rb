@@ -320,6 +320,9 @@ module Manifestly
       Tags are not currently ever removed from manifests, but the `find` command
       has an option to only return info for the latest tag.
 
+      If the SHA is already tagged with the tag, this command will not duplicate
+      the tag.
+
       When you run this command, the tag is immediately pushed to the upstream
       manifest repository.
 
@@ -345,9 +348,13 @@ module Manifestly
                   required: false
     def tag
       repository = Repository.load_cached(options[:repo], update: true)
-      repository.tag_scoped_to_file(
-        tag: options[:tag], sha: options[:sha], message: options[:message], push: true
-      )
+
+      begin
+        repository.tag_scoped_to_file(
+          tag: options[:tag], sha: options[:sha], message: options[:message], push: true
+        )
+      rescue Manifestly::Repository::ShaAlreadyTagged
+      end
     end
 
     desc "find", "Finds tagged manifest SHAs"
@@ -388,7 +395,8 @@ module Manifestly
     def find
       repository = Repository.load_cached(options[:repo], update: true)
       shas = repository.get_shas_with_tag(tag: options[:tag], file: options[:repo_file])
-      options[:limit] ? shas.take(options[:limit].to_i) : shas
+      shas = shas.take(options[:limit].to_i) if options[:limit]
+      say shas.uniq.join("\n")
     end
 
     desc "diff", "Show PR commits between two manifests across its repos"
@@ -431,6 +439,11 @@ module Manifestly
 
       manifest_diff = ManifestDiff.new(from_manifest, to_manifest)
       manifest_diff.to_markdown
+    end
+
+    desc "version", "Prints the version information"
+    def version
+      say "Manifestly #{Manifestly::VERSION} - https://github.com/openstax/manifestly"
     end
 
     protected

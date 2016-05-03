@@ -88,6 +88,7 @@ See `$> manifestly help diff`.
 ## Miscellaneous
 
 1. You can add comments to manifests using a `# comment here` style.  Blank lines and leading and trailing whitespace are ignored in manifests.
+2. `manifestly version` prints version information.
 
 ## Development
 

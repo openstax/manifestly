@@ -70,6 +70,44 @@ describe Manifestly::Repository do
     end
   end
 
+  context "when tagging scoped to a file" do
+    around(:each) do |example|
+      Scenarios.run(inline: <<-SETUP
+          git init -q remote
+          cd remote
+          touch file.txt
+          git add . && git commit -q -m "."
+          cd ..
+          git clone -q remote local
+          cd local
+          git rev-parse HEAD > ../sha.txt
+        SETUP
+      ) do |dirs|
+        @sha = File.open("#{dirs[:root]}/sha.txt").read.chomp
+        @dirs = dirs
+        @local = Manifestly::Repository.load("#{dirs[:root]}/local")
+
+        example.run
+      end
+    end
+
+    it "should work the first time" do
+      @local.tag_scoped_to_file(tag: 'release-to-qa', sha: @sha, message: 'hi', push: true)
+      remote = Git.open("#{@dirs[:root]}/remote")
+      expect(remote.describe(@sha)).to match /.+\/release-to-qa/
+    end
+
+    it "should not reapply the same tag to the same commit" do
+      @local.tag_scoped_to_file(tag: 'release-to-qa', sha: @sha, message: 'hi', push: true)
+
+      expect{
+        @local.tag_scoped_to_file(tag: 'release-to-qa', sha: @sha, message: 'hi', push: true)
+      }.to raise_error(Manifestly::Repository::ShaAlreadyTagged)
+
+      expect(@local.git.tags.count).to eq 1
+    end
+  end
+
   it 'should be able to fetch to find a commit whose checkout is requested' do
     Scenarios.run(inline: <<-SETUP
         git init -q remote
