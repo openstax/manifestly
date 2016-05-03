@@ -1,7 +1,6 @@
 #!/usr/bin/env ruby
 
 require 'rubygems'
-require 'byebug'
 
 $LOAD_PATH.unshift File.dirname(__FILE__) + '/../lib'
 
