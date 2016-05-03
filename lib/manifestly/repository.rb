@@ -81,6 +81,8 @@ module Manifestly
 
     def make_like_just_cloned!
       git.branch('master').checkout
+      # Blow away tags and fetch them back http://stackoverflow.com/a/5373319/1664216
+      git.tags.map{|tag| git.delete_tag(tag.name)}
       git.fetch('origin', :tags => true)
       git.reset_hard('origin/master')
     end
