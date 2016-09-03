@@ -77,13 +77,16 @@ describe Manifestly::Repository do
           cd remote
           touch file.txt
           git add . && git commit -q -m "."
+          git rev-parse HEAD > ../sha_0.txt
+          echo blah > file.txt
+          git add . && git commit -q -m "."
+          git rev-parse HEAD > ../sha_1.txt
           cd ..
           git clone -q remote local
-          cd local
-          git rev-parse HEAD > ../sha.txt
         SETUP
       ) do |dirs|
-        @sha = File.open("#{dirs[:root]}/sha.txt").read.chomp
+        @sha_0 = File.open("#{dirs[:root]}/sha_0.txt").read.chomp
+        @sha_1 = File.open("#{dirs[:root]}/sha_1.txt").read.chomp
         @dirs = dirs
         @local = Manifestly::Repository.load("#{dirs[:root]}/local")
 
@@ -92,21 +95,47 @@ describe Manifestly::Repository do
     end
 
     it "should work the first time" do
-      @local.tag_scoped_to_file(tag: 'release-to-qa', sha: @sha, message: 'hi', push: true)
+      @local.tag_scoped_to_file(tag: 'release-to-qa', sha: @sha_1, message: 'hi', push: true)
       remote = Git.open("#{@dirs[:root]}/remote")
-      expect(remote.describe(@sha)).to match /.+\/release-to-qa/
+      expect(remote.describe(@sha)).to match /.+\/file.txt\/release-to-qa/
     end
 
     it "should not reapply the same tag to the same commit" do
-      @local.tag_scoped_to_file(tag: 'release-to-qa', sha: @sha, message: 'hi', push: true)
+      @local.tag_scoped_to_file(tag: 'release-to-qa', sha: @sha_1, message: 'hi', push: true)
 
       expect{
-        @local.tag_scoped_to_file(tag: 'release-to-qa', sha: @sha[0..7], message: 'hi', push: true)
+        @local.tag_scoped_to_file(tag: 'release-to-qa', sha: @sha_1[0..7], message: 'hi', push: true)
       }.to raise_error(Manifestly::Repository::ShaAlreadyTagged)
 
-      expect(@local.git.tags.count).to eq 1
+      expect(@local.git.tags.count).to eq 2 # plain and unique versions of same tag
+    end
+
+    it "should apply a plain version of the tag (without timestamp or random characters)" do
+      @local.tag_scoped_to_file(tag: 'release-to-qa', sha: @sha_1, message: 'hi', push: true)
+      remote = Git.open("#{@dirs[:root]}/remote")
+      expect(remote).to have_sha_tag(@sha_1, /.+\/file.txt\/release-to-qa/)
+      expect(remote).to have_sha_tag(@sha_1, /\Afile.txt\/release-to-qa\z/)
+    end
+
+    it "should move existing plain versions of the tag and keep all unique versions in place" do
+      @local.tag_scoped_to_file(tag: 'release-to-qa', sha: @sha_0, message: 'hi', push: true)
+      remote = Git.open("#{@dirs[:root]}/remote")
+      plain_tag = /\Afile.txt\/release-to-qa\z/
+      unique_tag = /.+\/file.txt\/release-to-qa/
+
+      expect(remote).to have_sha_tag(@sha_0, unique_tag)
+      expect(remote).to have_sha_tag(@sha_0, plain_tag) # will move
+
+      @local.tag_scoped_to_file(tag: 'release-to-qa', sha: @sha_1, message: 'hi', push: true)
+      remote = Git.open("#{@dirs[:root]}/remote")
+      expect(remote).to have_sha_tag(@sha_1, unique_tag)
+      expect(remote).to have_sha_tag(@sha_1, plain_tag) # plain moved on to sha_1
+
+      expect(remote).to have_sha_tag(@sha_0, unique_tag)
+      expect(remote).not_to have_sha_tag(@sha_0, plain_tag) # plain moved off sha_1
     end
   end
+
 
   it 'should be able to fetch to find a commit whose checkout is requested' do
     Scenarios.run(inline: <<-SETUP
