@@ -326,6 +326,17 @@ module Manifestly
       When you run this command, the tag is immediately pushed to the upstream
       manifest repository.
 
+      Implementation note: if you look at the underlying git repository, you'll
+      see that tags are stored as the value you provided prepended with a
+      timestamp, some random characters (for uniqueness), and the filename
+      being tagged.  These unique tags are never removed and are what are used
+      by Manifestly, e.g. in the `find` command.  However, to make direct use
+      of the manifest repository easier, we also use moving tags that just
+      consist of the tag value you provide prepended by the filename being
+      tagged.  Each time you put tag `blah` on a sha for a file `my.manifest`,
+      a `my.manifest/blah` tag will move to that sha in the underlying manifest
+      git repo.
+
       #{Rainbow("Examples:").bright}
 
       $> manifestly tag --repo=org/repo --sha=fe10b5fdb9 --tag=release-to-qa --message="howdy"
@@ -370,6 +381,10 @@ module Manifestly
 
       You can limit the number of returned SHAs with the `--limit` flag.
       Otherwise, all matching SHAs are returned.
+
+      Implementation note: only pays attention to the unique versions of tags
+      created through manifestly, not to the "plain" tags that exist to support
+      direct use of the manifest git repo.
 
       #{Rainbow("Examples:").bright}
 
