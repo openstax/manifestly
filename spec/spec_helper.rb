@@ -69,3 +69,20 @@ RSpec::Matchers.define :exit_with_message do |expected_message|
     @failure_message || "expected the error message '#{@actual_message}' to match '#{expected_message}'"
   end
 end
+
+RSpec::Matchers.define :have_sha_tag do |sha,expected_tag|
+  include RSpec::Matchers::Composable
+
+  match do |git|
+    sha_tags = git.tags.select{|tag| tag.contents.match("object #{sha}")}
+    sha_tags.map(&:name).any?{|tag_value| tag_value.match(expected_tag)}
+  end
+
+  failure_message do |git|
+    "expected that #{git.dir} would have tag #{expected_tag} on sha #{sha}"
+  end
+
+  failure_message_when_negated do |git|
+    "expected that #{git.dir} would not have tag #{expected_tag} on sha #{sha}"
+  end
+end

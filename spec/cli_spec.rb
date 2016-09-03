@@ -272,10 +272,11 @@ describe Manifestly::CLI do
           Manifestly::CLI.start(%W[find --repo=#{dirs[:root]}/remote --repo_file=foo.manifest --tag=release-to-qa --limit=1])
         }.chomp).to eq shas[2]
 
-        # Check that tags made it to remote
+        # Check that tags made it to remote; there should be 3 unique tags, and each file has one plain tag
+        # for a total of 5
 
         git = Git.open("#{dirs[:root]}/remote")
-        expect(git.tags.count).to eq 3
+        expect(git.tags.count).to eq 5
       end
     end
 
@@ -357,13 +358,14 @@ describe Manifestly::CLI do
           }
         ).to eq manifest_sha
 
-        # do it again to show that the duplicate tag doesn't stick (no error output and still just one tag)
+        # do it again to show that the duplicate tag doesn't stick (no error output and still just "one" tag,
+        # really there is a plain version and a unique version so the tag count should be 2)
 
         expect(capture(:stdout) {
           Manifestly::CLI.start(%W[tag --repo=#{dirs[:root]}/remote.git --sha=#{manifest_sha} --tag=release-to-qa --message="hi\ there"])
         }).to eq ""
 
-        expect(Git.ls_remote("#{dirs[:root]}/remote.git")["tags"].keys.reject{|kk| kk.match(/.*\^\{\}/)}.count).to eq 1
+        expect(Git.ls_remote("#{dirs[:root]}/remote.git")["tags"].keys.reject{|kk| kk.match(/.*\^\{\}/)}.count).to eq 2
       end
     end
   end

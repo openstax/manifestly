@@ -192,15 +192,21 @@ module Manifestly
       raise(ShaAlreadyTagged) if existing_shas.any?{|existing| existing.match(/#{options[:sha]}/)}
 
       filename = get_commit_filename(options[:sha])
-      tag = "#{Time.now.utc.strftime("%Y%m%d-%H%M%S.%6N")}/#{::SecureRandom.hex(2)}/#{filename}/#{options[:tag]}"
-      git.add_tag(tag, options[:sha], {annotate: true, message: options[:message], f: true})
-      git.push('origin', "refs/tags/#{tag}", f: true) if options[:push]
+
+      plain_tag = "#{filename}/#{options[:tag]}"
+      git.add_tag(plain_tag, options[:sha], {annotate: true, message: options[:message], f: true})
+      git.push('origin', "refs/tags/#{plain_tag}", f: true) if options[:push]
+
+      unique_tag = "#{Time.now.utc.strftime("%Y%m%d-%H%M%S.%6N")}/#{::SecureRandom.hex(2)}/#{filename}/#{options[:tag]}"
+      git.add_tag(unique_tag, options[:sha], {annotate: true, message: options[:message], f: true})
+      git.push('origin', "refs/tags/#{unique_tag}", f: true) if options[:push]
     end
 
     def get_shas_with_tag(options={})
       options[:file] ||= ".*"
       options[:order] ||= :descending
 
+      # only look for the unique tags, not the plain ones
       pattern = /.*\/#{options[:file]}\/#{options[:tag]}/
 
       tag_objects = git.tags.select{|tag| tag.name.match(pattern)}
