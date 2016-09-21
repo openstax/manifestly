@@ -103,6 +103,7 @@ describe Manifestly::CLI do
           mkdir repos && cd repos
           git init -q one
           cd one
+          git remote add origin https://github.com/org/repo.git
           touch some_file
           git add . && git commit -q -m "."
           git rev-parse HEAD > ../../sha_0.txt
@@ -111,10 +112,19 @@ describe Manifestly::CLI do
           cd two
           touch other_file
           git add . && git commit -q -m "."
+          git tag -a v8.7 -m "howdy"
           git rev-parse HEAD > ../../sha_1.txt
+          cd ..
+          git init -q three
+          cd three
+          git remote add origin git@github.com:org/repo2.git
+          touch some_file
+          git add . && git commit -q -m "."
+          git tag v1.2.3
+          git rev-parse HEAD > ../../sha_2.txt
         SETUP
       ) do |dirs|
-        shas = %w(sha_0 sha_1).collect do |sha|
+        shas = %w(sha_0 sha_1 sha_2).collect do |sha|
           File.open("#{dirs[:root]}/#{sha}.txt").read.chomp
         end
 
@@ -125,8 +135,9 @@ describe Manifestly::CLI do
         manifest = File.open("#{dirs[:root]}/my.manifest").read
 
         expect(manifest).to eq(
-          "one @ #{shas[0]}\n" \
-          "two @ #{shas[1]}\n"
+          "[one] org/repo@#{std_sha(shas[0])}\n" \
+          "[three] org/repo2@#{std_sha(shas[2])} # v1.2.3\n" \
+          "[two]@#{std_sha(shas[1])}\n"
         )
       end
     end
