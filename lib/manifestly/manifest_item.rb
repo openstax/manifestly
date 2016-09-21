@@ -53,13 +53,19 @@ module Manifestly
       repo_name, dir, sha = parse_file_string(string)
 
       matching_repositories = repositories.select do |repo|
-        repo.github_name_or_path == repo_name &&
+        # directory name will be the most unique way to match and should always be available
+        # wheres repo_name won't always be
         repo.deepest_working_dir == dir
       end
 
       # TODO test these two exceptions!
-      raise(MultipleSameNameRepositories, repo_display_name) if matching_repositories.size > 1
-      raise(RepositoryNotFound, repo_display_name) if matching_repositories.empty?
+      if matching_repositories.size > 1
+        raise(MultipleSameNameRepositories, "Dir: [#{dir}], Repo: [#{repo_name}]")
+      end
+
+      if matching_repositories.empty?
+        raise(RepositoryNotFound, "Dir: [#{dir}], Repo: [#{repo_name}]")
+      end
 
       repository = matching_repositories.first
 

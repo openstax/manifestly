@@ -12,7 +12,7 @@ describe Manifestly::CLI do
           touch some_file
           git add . && git commit -q -m "."
           git rev-parse HEAD > ../../sha_0.txt
-          echo "one @ `git rev-parse HEAD`" > ../../my.manifest
+          echo "one @ `git rev-parse HEAD | cut -c1-10`" > ../../my.manifest
           echo blah > some_file
           git add . && git commit -q -m "."
           git rev-parse HEAD > ../../sha_1.txt
@@ -312,6 +312,9 @@ describe Manifestly::CLI do
           fake_commit | repo:four | comment: Another commit
           fake_commit | repo:four | comment: Merge pull request #24 from org/howdy Added milkshakes
           fake_commit | repo:four | comment: Merge pull request #25 from org/howdy Added feature WW | sha:SHA7
+          cd four
+          git remote add origin git@github.com:org/repo2.git
+          cd ..
           git init -q manifests
           cd manifests
           echo one @ "${SHA1}" >> foo
@@ -333,7 +336,7 @@ describe Manifestly::CLI do
 
         result = Manifestly::CLI.start(%W[diff --search_paths=#{dirs[:root]} --repo=#{dirs[:root]}/manifests --from_sha=#{manifest_shas[0]} --to_sha=#{manifest_shas[1]}])
 
-        expect(result).to match /Manifest Diff\n\n.*foo.*manifests.*\n\n## one.*\n\n.*PR #2 Added.*\n.*PR #1.*\n\n## two.*\n\n\* There.*\n\n## three.*\n\n\* This.*\n\n## four.*\n\n.*rolled back.*\n\n.*\[PR #25.*\n.*PR #24.*/
+        expect(result).to match /Manifest Diff\n\n.*foo.*manifests.*\n\n## \[one.*\n\n.*PR #2 Added.*\n.*PR #1.*\n\n## \[two.*\n\n\* There.*\n\n## \[three.*\n\n\* This.*\n\n## \[four\] org\/repo2.*\n\n.*rolled back.*\n\n.*\[PR #25.*\n.*PR #24.*/
       end
 
     end

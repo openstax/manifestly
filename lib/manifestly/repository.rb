@@ -244,11 +244,7 @@ module Manifestly
     end
 
     def display_name
-      if github_name_or_path
-        github_name_or_path + " (#{deepest_working_dir})"
-      else
-        deepest_working_dir
-      end
+      "[#{deepest_working_dir}]#{' ' + github_name_or_path if !github_name_or_path.nil?}"
     end
 
     protected
