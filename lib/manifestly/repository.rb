@@ -239,18 +239,12 @@ module Manifestly
       git.dir
     end
 
+    def deepest_working_dir
+      working_dir.to_s.split(File::SEPARATOR).last
+    end
+
     def display_name
-      if github_name_or_path
-        repo_name = github_name_or_path.split('/').last
-        dir_name = working_dir.to_s.split(File::SEPARATOR).last
-        if repo_name == dir_name
-          github_name_or_path
-        else
-          github_name_or_path + " (#{dir_name})"
-        end
-      else
-        working_dir.to_s.split('/').last
-      end
+      "[#{deepest_working_dir}]#{' ' + github_name_or_path if !github_name_or_path.nil?}"
     end
 
     protected

@@ -12,7 +12,7 @@ describe Manifestly::CLI do
           touch some_file
           git add . && git commit -q -m "."
           git rev-parse HEAD > ../../sha_0.txt
-          echo "one @ `git rev-parse HEAD`" > ../../my.manifest
+          echo "one @ `git rev-parse HEAD | cut -c1-10`" > ../../my.manifest
           echo blah > some_file
           git add . && git commit -q -m "."
           git rev-parse HEAD > ../../sha_1.txt
@@ -103,6 +103,7 @@ describe Manifestly::CLI do
           mkdir repos && cd repos
           git init -q one
           cd one
+          git remote add origin https://github.com/org/repo.git
           touch some_file
           git add . && git commit -q -m "."
           git rev-parse HEAD > ../../sha_0.txt
@@ -111,10 +112,19 @@ describe Manifestly::CLI do
           cd two
           touch other_file
           git add . && git commit -q -m "."
+          git tag -a v8.7 -m "howdy"
           git rev-parse HEAD > ../../sha_1.txt
+          cd ..
+          git init -q three
+          cd three
+          git remote add origin git@github.com:org/repo2.git
+          touch some_file
+          git add . && git commit -q -m "."
+          git tag v1.2.3
+          git rev-parse HEAD > ../../sha_2.txt
         SETUP
       ) do |dirs|
-        shas = %w(sha_0 sha_1).collect do |sha|
+        shas = %w(sha_0 sha_1 sha_2).collect do |sha|
           File.open("#{dirs[:root]}/#{sha}.txt").read.chomp
         end
 
@@ -125,8 +135,9 @@ describe Manifestly::CLI do
         manifest = File.open("#{dirs[:root]}/my.manifest").read
 
         expect(manifest).to eq(
-          "one @ #{shas[0]}\n" \
-          "two @ #{shas[1]}\n"
+          "[one] org/repo@#{std_sha(shas[0])}\n" \
+          "[three] org/repo2@#{std_sha(shas[2])} # v1.2.3\n" \
+          "[two]@#{std_sha(shas[1])}\n"
         )
       end
     end
@@ -301,6 +312,9 @@ describe Manifestly::CLI do
           fake_commit | repo:four | comment: Another commit
           fake_commit | repo:four | comment: Merge pull request #24 from org/howdy Added milkshakes
           fake_commit | repo:four | comment: Merge pull request #25 from org/howdy Added feature WW | sha:SHA7
+          cd four
+          git remote add origin git@github.com:org/repo2.git
+          cd ..
           git init -q manifests
           cd manifests
           echo one @ "${SHA1}" >> foo
@@ -322,7 +336,7 @@ describe Manifestly::CLI do
 
         result = Manifestly::CLI.start(%W[diff --search_paths=#{dirs[:root]} --repo=#{dirs[:root]}/manifests --from_sha=#{manifest_shas[0]} --to_sha=#{manifest_shas[1]}])
 
-        expect(result).to match /Manifest Diff\n\n.*foo.*manifests.*\n\n## one.*\n\n.*PR #2 Added.*\n.*PR #1.*\n\n## two.*\n\n\* There.*\n\n## three.*\n\n\* This.*\n\n## four.*\n\n.*rolled back.*\n\n.*\[PR #25.*\n.*PR #24.*/
+        expect(result).to match /Manifest Diff\n\n.*foo.*manifests.*\n\n## \[one.*\n\n.*PR #2 Added.*\n.*PR #1.*\n\n## \[two.*\n\n\* There.*\n\n## \[three.*\n\n\* This.*\n\n## \[four\] org\/repo2.*\n\n.*rolled back.*\n\n.*\[PR #25.*\n.*PR #24.*/
       end
 
     end

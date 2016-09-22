@@ -20,12 +20,14 @@ To update to the latest version:
 A manifest is simple: just a file listing off repositories at specified commits, e.g.:
 
 ```
-my_github_org/application_1 @ fb186400247779f90aacf23fa2cde044cbac387c
-my_github_org/application_2 @ c4eb68d6b16f61af04dd0e02df2249382d411104
+[directory_1] my_github_org/application_1@fb18640024
+[directory_2] my_github_org/application_2@c4eb68d6b1 # v1.2.3
 ```
 
 When you have deploys that span multiple applications, a manifest lets you identify exactly what is deployed for each app.
 This tool, Manifestly, helps you create, find, and use these manifests in your deploy infrastructure.
+
+_Note: By including repository source directories, manifestly helps support cases where one repository holds the source for multiple deployments.  Manifestly will also include tag names for the indicated commit at the end of each line in a comment._
 
 ## Usage
 

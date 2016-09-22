@@ -35,6 +35,10 @@ RSpec.configure do |config|
       $stdout = original_stdout
     end
   end
+
+  def std_sha(sha)
+    sha[0..9]
+  end
 end
 
 RSpec::Matchers.define :exit_with_message do |expected_message|

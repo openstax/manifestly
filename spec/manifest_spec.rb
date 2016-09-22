@@ -18,4 +18,37 @@ describe Manifestly::Manifest do
       ])
     end
   end
+
+  describe "create manifest from file" do
+
+    context "old format without repo in manifest" do
+      # Somewhat contrived example, b/c a manifest made from this scenario would
+      # normally include the repo.
+
+      it 'loads fine' do
+        Scenarios.run(inline: <<-SETUP
+            mkdir repos && cd repos
+            git init -q one
+            cd one
+            touch some_file
+            git add . && git commit -q -m "."
+            git remote add origin git@github.com:org/my-repo.git
+            git rev-parse HEAD > ../../sha_0.txt
+            echo "one @ `git rev-parse HEAD`" > ../../my.manifest
+            echo blah > some_file
+            git add . && git commit -q -m "."
+            git rev-parse HEAD > ../../sha_1.txt
+          SETUP
+        ) do | dirs|
+
+          repositories = [Manifestly::Repository.load("#{dirs[:root]}/repos/one")]
+
+          expect{
+            manifest = described_class.read_file("#{dirs[:root]}/my.manifest", repositories)
+          }.not_to raise_error
+        end
+      end
+    end
+
+  end
 end
