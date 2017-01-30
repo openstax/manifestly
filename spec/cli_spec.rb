@@ -98,50 +98,71 @@ describe Manifestly::CLI do
       expect{ Manifestly::CLI.start(%W[download]) }.to exit_with_message(/No value provided for required options/)
     end
 
-    it 'creates a manifest non-interactively' do
-      Scenarios.run(inline: <<-SETUP
-          mkdir repos && cd repos
-          git init -q one
-          cd one
-          git remote add origin https://github.com/org/repo.git
-          touch some_file
-          git add . && git commit -q -m "."
-          git rev-parse HEAD > ../../sha_0.txt
-          cd ..
-          git init -q two
-          cd two
-          touch other_file
-          git add . && git commit -q -m "."
-          git tag -a v8.7 -m "howdy"
-          git rev-parse HEAD > ../../sha_1.txt
-          cd ..
-          git init -q three
-          cd three
-          git remote add origin git@github.com:org/repo2.git
-          touch some_file
-          git add . && git commit -q -m "."
-          git tag v1.2.3
-          git rev-parse HEAD > ../../sha_2.txt
-        SETUP
-      ) do |dirs|
-        shas = %w(sha_0 sha_1 sha_2).collect do |sha|
-          File.open("#{dirs[:root]}/#{sha}.txt").read.chomp
-        end
+    context 'non-interactive creation' do
+      around(:each) do |example|
+          Scenarios.run(inline: <<-SETUP
+            mkdir repos && cd repos
+            git init -q one
+            cd one
+            git remote add origin https://github.com/org/repo.git
+            touch some_file
+            git add . && git commit -q -m "."
+            git rev-parse HEAD > ../../sha_0.txt
+            cd ..
+            git init -q two
+            cd two
+            touch other_file
+            git add . && git commit -q -m "."
+            git tag -a v8.7 -m "howdy"
+            git rev-parse HEAD > ../../sha_1.txt
+            cd ..
+            git init -q three
+            cd three
+            git remote add origin git@github.com:org/repo2.git
+            touch some_file
+            git add . && git commit -q -m "."
+            git tag v1.2.3
+            git rev-parse HEAD > ../../sha_2.txt
+          SETUP
+        ) do |dirs|
+          @shas = %w(sha_0 sha_1 sha_2).collect do |sha|
+            File.open("#{dirs[:root]}/#{sha}.txt").read.chomp
+          end
+          @dirs = dirs
 
+          example.run
+        end
+      end
+
+      it 'creates a manifest with default options' do
         suppress_output do
-          Manifestly::CLI.start(%W[create --no-interactive --search_paths=#{dirs[:root]}/repos --add=all --save_as=#{dirs[:root]}/my.manifest])
+          Manifestly::CLI.start(%W[create --no-interactive --search_paths=#{@dirs[:root]}/repos --add=all --save_as=#{@dirs[:root]}/my.manifest])
         end
 
-        manifest = File.open("#{dirs[:root]}/my.manifest").read
+        manifest = File.open("#{@dirs[:root]}/my.manifest").read
 
         expect(manifest).to eq(
-          "[one] org/repo@#{std_sha(shas[0])}\n" \
-          "[three] org/repo2@#{std_sha(shas[2])} # v1.2.3\n" \
-          "[two]@#{std_sha(shas[1])}\n"
+          "[one] org/repo@#{std_sha(@shas[0])}\n" \
+          "[three] org/repo2@#{std_sha(@shas[2])} # v1.2.3\n" \
+          "[two]@#{std_sha(@shas[1])}\n"
         )
       end
-    end
 
+      it 'creates a manifest with full SHAs' do
+        suppress_output do
+          Manifestly::CLI.start(%W[create --no-interactive --search_paths=#{@dirs[:root]}/repos --add=all --save_as=#{@dirs[:root]}/my.manifest --full-shas=true])
+        end
+
+        manifest = File.open("#{@dirs[:root]}/my.manifest").read
+
+        expect(manifest).to eq(
+          "[one] org/repo@#{@shas[0]}\n" \
+          "[three] org/repo2@#{@shas[2]} # v1.2.3\n" \
+          "[two]@#{@shas[1]}\n"
+        )
+      end
+
+    end
   end
 
   describe "upload" do

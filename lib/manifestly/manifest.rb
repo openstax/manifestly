@@ -53,11 +53,11 @@ module Manifestly
       end
     end
 
-    def write(filename)
+    def write(filename, options={})
       File.open(filename, 'w') do |file|
         @items.sort_by!(&:repository_name)
         @items.each do |item|
-          file.write(item.to_file_string + "\n")
+          file.write(item.to_file_string(options) + "\n")
         end
       end
     end

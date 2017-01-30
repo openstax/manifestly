@@ -41,12 +41,15 @@ module Manifestly
       end.map(&:name)
     end
 
-    def to_file_string
+    def to_file_string(options={})
+      options[:full_shas] ||= false
+
       dir = @repository.deepest_working_dir
       repo = @repository.github_name_or_path
       tags = commit_tags
+      sha = options[:full_shas] ? commit.sha : commit.sha[0..9]
 
-      "[#{dir}]#{repo.nil? ? '' : ' ' + repo}@#{commit.sha[0..9]}#{' # ' + tags.join(",") if tags.any?}"
+      "[#{dir}]#{repo.nil? ? '' : ' ' + repo}@#{sha}#{' # ' + tags.join(",") if tags.any?}"
     end
 
     def self.from_file_string(string, repositories)
