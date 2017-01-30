@@ -95,6 +95,11 @@ module Manifestly
                   banner: '',
                   required: false,
                   default: ''
+    method_option :full_shas,
+                  desc: "Use full instead of shortened SHAs",
+                  type: :boolean,
+                  default: false,
+                  required: false
     long_desc <<-DESC
       Creates a manifest.
 
@@ -508,7 +513,7 @@ module Manifestly
 
       filename = default_filename if filename.blank?
 
-      manifest.write(filename)
+      manifest.write(filename, options.slice("full_shas"))
     end
 
     def present_commit_menu(manifest_item, options={})
