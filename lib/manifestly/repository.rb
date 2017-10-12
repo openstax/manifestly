@@ -41,7 +41,7 @@ module Manifestly
 
       if repository.nil?
         remote_location = is_github_name?(github_name_or_path) ?
-                            "git@github.com:#{github_name_or_path}.git" :
+                            "https://github.com/#{github_name_or_path}.git" :
                             github_name_or_path
         Git.clone(remote_location, cached_path)
         repository = new(cached_path)
